@@ -11,27 +11,18 @@ func main() {
 }
 
 func testLine() {
-	r := clip.Rect{5, 5, 10, 10}
-	l := clip.NewLiangBarsky(r)
+	window := clip.Rect{5, 5, 10, 10}
+	l := clip.NewLiangBarsky(window)
 
-	fmt.Printf("l=%+v\n", l)
-	for i := 0.0; i < 10.0; i++ {
-		a := clip.Point{0, i}
-		b := clip.Point{20, 20 + i}
-		c, d, ok := l.ClipLine(a, b)
-		fmt.Printf("a,b=%+v,%+v --> ", a, b)
+	fmt.Printf("window=%+v\n", l)
+	for i := 0.0; i <= 15.0; i++ {
+		line := clip.NewLine(0, i, 20, 20-i)
+		clipped, ok := l.ClipLine(line)
+		fmt.Printf("line=%+v --> ", line)
 		if ok {
-			fmt.Printf("c,d=%+v,%+v\n", c, d)
+			fmt.Printf("clipped=%+v\n", clipped)
 		} else {
 			fmt.Println("outside")
 		}
 	}
-}
-func testPoly() {
-	x := []int{1, 2, 3}
-	y := []int{1, 2, 3}
-	rc, u, v := clip.LiangBarskyPolygonClip(x, y)
-	fmt.Printf("rc=%d\n", rc)
-	fmt.Printf("u=%+v\n", u)
-	fmt.Printf("v=%+v\n", v)
 }

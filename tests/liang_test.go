@@ -10,7 +10,7 @@ import (
 func TestLiangeLine(t *testing.T) {
 	window := clip.Rect{5, 5, 10, 10}
 
-	for i := 0.0; i <= 5; i++ {
+	for i := 0.0; i <= 5.0; i += 0.1 {
 		test := lineTest{
 			window:         window,
 			line:           clip.NewLine(i, 0, 20+i, 20),
@@ -24,7 +24,6 @@ func TestLiangeLine(t *testing.T) {
 			window:         window,
 			line:           clip.NewLine(i, 0, 20+i, 20),
 			expectedInside: false,
-			expectedLine:   clip.NewLine(0, 0, 0, 0),
 		}
 		testLine(t, test)
 	}

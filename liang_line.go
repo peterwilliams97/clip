@@ -1,6 +1,7 @@
 package clip
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -96,7 +97,13 @@ func (l liangBarsky) ClipLine(line Line) (Line, bool) {
 		return Line{}, false
 	}
 	a = line.Position(i.tE)
-	b = line.Position(i.tE + i.tL) // !@#$ Why not i.tL
+	b = line.Position(i.tL)
+	if !l.inside(a) {
+		panic(fmt.Errorf("a=%+v outside lb=%+v", a, l))
+	}
+	if !l.inside(b) {
+		panic(fmt.Errorf("b=%+v outside lb=%+v", b, l))
+	}
 	return Line{a, b}, true
 }
 
@@ -139,13 +146,20 @@ func (i *interval) clipT(a, d float64) bool {
 	return true
 }
 
+// inside returns true if `a` is inside window `l`.
 func (l liangBarsky) inside(a Point) bool {
-	return l.Llx <= a.X && a.X <= l.Urx &&
-		l.Lly <= a.Y && a.Y <= l.Ury
+	return l.Llx-tol <= a.X && a.X <= l.Urx+tol &&
+		l.Lly-tol <= a.Y && a.Y <= l.Ury+tol
+}
+
+// inside returns true if all points on `line` are inside window `l`.
+func (l liangBarsky) LineInside(line Line) bool {
+	return l.inside(line.A) && l.inside(line.B)
 }
 
 func isZero(a float64) bool {
 	return math.Abs(a) < tol
 }
 
+// tol is the tolerance on all measurements
 const tol = 0.000001 * 0.000001

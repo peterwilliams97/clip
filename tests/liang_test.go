@@ -13,9 +13,9 @@ func TestLiangeLine(t *testing.T) {
 	for i := 0.0; i <= 5.0; i += 0.1 {
 		test := lineTest{
 			window:         window,
-			line:           clip.NewLine(i, 0, 20+i, 20),
+			line:           clip.NewLine(i, 0, 15+i, 15),
 			expectedInside: true,
-			expectedLine:   clip.NewLine(5+i, 5, 15, 15-i),
+			expectedLine:   clip.NewLine(5+i, 5, 10, 10-i),
 		}
 		testLine(t, test)
 	}
@@ -39,7 +39,10 @@ func TestLiangeLine(t *testing.T) {
 			urx := rnd(-20, 20)
 			ury := rnd(-20, 20)
 			line := clip.NewLine(llx, lly, urx, ury)
-			lb.ClipLine(line)
+			clipped, ok := lb.ClipLine(line)
+			if ok && !lb.LineInside(clipped) {
+				t.Fatalf("line=%+v outside lb=%+v", line, lb)
+			}
 		}
 	}
 }

@@ -107,6 +107,150 @@ func (l liangBarsky) ClipLine(line Line) (Line, bool) {
 	return Line{a, b}, true
 }
 
+// // func LiangBarskyPolygonClip(x, y []int) (int, []int, []int) { // vertices of input polygon
+func (l liangBarsky) ClipPolygon(path []Point) []Point {
+	n := len(path)
+
+	// Avoid special case for last edge
+	path = append(path, path[0])
+
+	clipped := make([]Point, 0, n)
+
+	ll := Point{l.Llx, l.Lly}
+	ur := Point{l.Urx, l.Ury}
+
+	var in, out Point              // Coordinates of entry and exit points
+	var tOut1, tIn2, tOut2 float64 // Parameter values of same
+	var tIn, tOut Point            // Parameter values for intersection
+
+	var o Point
+
+	for i := 0; i < n; i++ { // for each edge
+		p0 := path[i]
+		p1 := path[i+1]
+		delta := p1.sub(p0)
+
+		// use this to determine which bounding lines for the clip region the
+		// containing line hits first
+		if delta.X > 0 || (isZero(delta.X) && p0.X > ur.X) {
+			in.X = ll.X
+			out.X = ur.X
+		} else {
+			in.X = ur.X
+			out.X = ll.X
+		}
+		if delta.Y > 0 || (isZero(delta.Y) && p0.Y > ur.Y) {
+			in.Y = ll.Y
+			out.Y = ur.Y
+		} else {
+			in.Y = ur.Y
+			out.Y = ll.Y
+		}
+
+		// find the t values for the x and y exit points
+		if !isZero(delta.X) {
+			tOut.X = (out.X - p0.X) / delta.X
+		} else if ll.X <= p0.X && p0.X <= ur.X {
+			tOut.X = INFINITY
+		} else {
+			tOut.X = -INFINITY
+		}
+		if !isZero(delta.Y) {
+			tOut.Y = (out.Y - p0.Y) / delta.Y
+		} else if ll.Y <= p0.Y && p0.Y <= ur.Y {
+			tOut.Y = INFINITY
+		} else {
+			tOut.Y = -INFINITY
+		}
+
+		// Order the two exit points
+		if tOut.X < tOut.Y {
+			tOut1 = tOut.X
+			tOut2 = tOut.Y
+		} else {
+			tOut1 = tOut.Y
+			tOut2 = tOut.X
+		}
+
+		if tOut2 > 0 {
+			if !isZero(delta.X) {
+				tIn.X = (in.X - p0.X) / delta.X
+			} else {
+				tIn.X = -INFINITY
+			}
+
+			if !isZero(delta.Y) {
+				tIn.Y = (in.Y - p0.Y) / delta.Y
+			} else {
+				tIn.Y = -INFINITY
+			}
+			if tIn.X < tIn.Y {
+				tIn2 = tIn.Y
+			} else {
+				tIn2 = tIn.X
+			}
+			if tOut1 < tIn2 { // no visible segment
+				if 0 < tOut1 && tOut1 <= 1 {
+					// line crosses over intermediate corner region
+					if tIn.X < tIn.Y {
+						o = Point{out.X, in.Y}
+					} else {
+						o = Point{in.X, out.Y}
+					}
+					clipped = append(clipped, o)
+				}
+			} else {
+
+				// line crosses though window
+				if 0 < tOut1 && tIn2 <= 1 {
+					if 0 <= tIn2 { // visible segment
+						o = Point{in.X, p0.Y + tIn.X*delta.Y}
+						if tIn.X > tIn.Y {
+							o = Point{in.X, p0.Y + tIn.X*delta.Y}
+						} else {
+							o = Point{p0.X + tIn.Y*delta.X, in.Y}
+						}
+						clipped = append(clipped, o)
+					}
+
+					if tOut1 <= 1 {
+						if tOut.X < tOut.Y {
+							o = Point{out.X, p0.Y + tOut.X*delta.Y}
+						} else {
+							o = Point{p0.X + tOut.Y*delta.X, out.Y}
+						}
+						clipped = append(clipped, o)
+					} else {
+						clipped = append(clipped, p1)
+					}
+				}
+			}
+
+			if 0 < tOut2 && tOut2 <= 1 {
+				o = Point{out.X, out.Y}
+				clipped = append(clipped, o)
+			}
+		}
+	}
+
+	return trim(removeDoubles(clipped))
+}
+
+func removeDoubles(path []Point) []Point {
+	out := []Point{path[0]}
+	for _, p := range path {
+		if !p.Equals(out[len(out)-1]) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+func trim(path []Point) []Point {
+	out := make([]Point, len(path))
+	copy(out, path)
+	return out
+}
+
 // clipT tests t=`a`/`d` for insideness in `tE` <= t*`d` <= `tL` betweem
 // tE <= t <= tL : inside
 // Enter test: tE -> t

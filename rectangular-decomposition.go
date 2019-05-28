@@ -5,59 +5,7 @@ import (
 	"math"
 )
 
-// Point is a 2-d point.
-type Point struct {
-	X, Y float64
-}
-
-func (p Point) add(d Point) Point {
-	return Point{p.X + d.X, p.Y + d.Y}
-}
-
-func (p Point) sub(d Point) Point {
-	return Point{p.X - d.X, p.Y - d.Y}
-}
-
-func (p Point) mul(g float64) Point {
-	return Point{p.X * g, p.Y * g}
-}
-
-func (p Point) isZero() bool {
-	return isZero(p.X) && isZero(p.Y)
-}
-
-// Equals returns true if `p` and `d` are in the same location.
-func (p Point) Equals(d Point) bool {
-	return p.sub(d).isZero()
-}
-
-type Line struct {
-	A, B Point
-}
-
-// Position returns the parametrized point.
-// p = a ∙ (1 - t) + b ∙ t = a + (b - a) ∙ t
-func (l Line) Position(t float64) Point {
-	a, b := l.A, l.B
-	d := b.sub(a)
-	return a.add(d.mul(t))
-}
-
-// NewLine returns the line from (ax, ay) to (bx, by).
-func NewLine(ax, ay, bx, by float64) Line {
-	return Line{Point{ax, ay}, Point{bx, by}}
-}
-
-// Equals returns true if `l` and `d` are in the same location.
-func (l Line) Equals(d Line) bool {
-	return l.A.Equals(d.A) && l.B.Equals(d.B)
-}
-
-// Rect is a rectangle.
-type Rect struct {
-	Llx, Lly, Urx, Ury float64
-}
-
+// liangBarsky is a Liang-Barsky clipper.
 type liangBarsky struct {
 	Rect
 }
@@ -107,7 +55,54 @@ func (l liangBarsky) ClipLine(line Line) (Line, bool) {
 	return Line{a, b}, true
 }
 
-// // func LiangBarskyPolygonClip(x, y []int) (int, []int, []int) { // vertices of input polygon
+// clipT tests t=`a`/`d` for insideness in `tE` <= t*`d` <= `tL` betweem
+// tE <= t <= tL : inside
+// Enter test: tE -> t
+// Leave test:tL -> t
+func (i *interval) clipRange(ll, ur, a, d float64) bool {
+	return i.clipT(ll-a, d) && i.clipT(a-ur, -d)
+}
+
+// clipT tests t=`a`/`d` for insideness in `tE`, `tL`
+// tE <= t <= tL : inside
+// Enter test: tE -> t
+// Leave test:tL -> t
+func (i *interval) clipT(a, d float64) bool {
+	if isZero(d) {
+		return a <= 0.0
+	}
+
+	t := a / d
+
+	if d > 0.0 {
+		// Enter test (lower left x,y)
+		if t > i.tL {
+			return false
+		}
+		if t > i.tE {
+			i.tE = t
+		}
+	} else {
+		// Leave test (upper right x,y)
+		if t < i.tE {
+			return false
+		}
+		if t < i.tL {
+			i.tL = t
+		}
+	}
+	return true
+}
+
+const infinity = math.MaxFloat64
+
+// ClipPolygon returns `path` clipped to the `l` rectangular window,
+// This routine uses the Liang-Barsky algorithm for polygon clipping as
+// desribed in Foley & van Dam.  It's more efficient than the
+// Sutherland-Hodgman, but produces redundent turning vertices at the
+// corners of the clip region.  This makes rendering as a series of
+// triangles very awkward.
+
 func (l liangBarsky) ClipPolygon(path []Point) []Point {
 	n := len(path)
 
@@ -123,7 +118,7 @@ func (l liangBarsky) ClipPolygon(path []Point) []Point {
 	var tOut1, tIn2, tOut2 float64 // Parameter values of same
 	var tIn, tOut Point            // Parameter values for intersection
 
-	var o Point
+	var o Point // The next point to be added
 
 	for i := 0; i < n; i++ { // for each edge
 		p0 := path[i]
@@ -133,56 +128,50 @@ func (l liangBarsky) ClipPolygon(path []Point) []Point {
 		// use this to determine which bounding lines for the clip region the
 		// containing line hits first
 		if delta.X > 0 || (isZero(delta.X) && p0.X > ur.X) {
-			in.X = ll.X
-			out.X = ur.X
+			in.X, out.X = ll.X, ur.X
 		} else {
-			in.X = ur.X
-			out.X = ll.X
+			in.X, out.X = ur.X, ll.X
 		}
 		if delta.Y > 0 || (isZero(delta.Y) && p0.Y > ur.Y) {
-			in.Y = ll.Y
-			out.Y = ur.Y
+			in.Y, out.Y = ll.Y, ur.Y
 		} else {
-			in.Y = ur.Y
-			out.Y = ll.Y
+			in.Y, out.Y = ur.Y, ll.Y
 		}
 
 		// find the t values for the x and y exit points
 		if !isZero(delta.X) {
 			tOut.X = (out.X - p0.X) / delta.X
 		} else if ll.X <= p0.X && p0.X <= ur.X {
-			tOut.X = INFINITY
+			tOut.X = infinity
 		} else {
-			tOut.X = -INFINITY
+			tOut.X = -infinity
 		}
 		if !isZero(delta.Y) {
 			tOut.Y = (out.Y - p0.Y) / delta.Y
 		} else if ll.Y <= p0.Y && p0.Y <= ur.Y {
-			tOut.Y = INFINITY
+			tOut.Y = infinity
 		} else {
-			tOut.Y = -INFINITY
+			tOut.Y = -infinity
 		}
 
 		// Order the two exit points
 		if tOut.X < tOut.Y {
-			tOut1 = tOut.X
-			tOut2 = tOut.Y
+			tOut1, tOut2 = tOut.X, tOut.Y
 		} else {
-			tOut1 = tOut.Y
-			tOut2 = tOut.X
+			tOut1, tOut2 = tOut.Y, tOut.X
 		}
 
 		if tOut2 > 0 {
 			if !isZero(delta.X) {
 				tIn.X = (in.X - p0.X) / delta.X
 			} else {
-				tIn.X = -INFINITY
+				tIn.X = -infinity
 			}
 
 			if !isZero(delta.Y) {
 				tIn.Y = (in.Y - p0.Y) / delta.Y
 			} else {
-				tIn.Y = -INFINITY
+				tIn.Y = -infinity
 			}
 			if tIn.X < tIn.Y {
 				tIn2 = tIn.Y
@@ -233,61 +222,29 @@ func (l liangBarsky) ClipPolygon(path []Point) []Point {
 		}
 	}
 
-	return trim(removeDoubles(clipped))
+	return trim(removeRepeats(clipped))
 }
 
-func removeDoubles(path []Point) []Point {
-	out := []Point{path[0]}
-	for _, p := range path {
+// removeRepeats returns `path` with repeated points removed.
+func removeRepeats(path []Point) []Point {
+	if len(path) == 0 {
+		return []Point{}
+	}
+	out := make([]Point, 0, len(path))
+	out[0] = path[0]
+	for _, p := range path[1:] {
 		if !p.Equals(out[len(out)-1]) {
 			out = append(out, p)
 		}
 	}
 	return out
 }
+
+// trim returns a copy of `path` with minimal backing memory.
 func trim(path []Point) []Point {
 	out := make([]Point, len(path))
 	copy(out, path)
 	return out
-}
-
-// clipT tests t=`a`/`d` for insideness in `tE` <= t*`d` <= `tL` betweem
-// tE <= t <= tL : inside
-// Enter test: tE -> t
-// Leave test:tL -> t
-func (i *interval) clipRange(ll, ur, a, d float64) bool {
-	return i.clipT(ll-a, d) && i.clipT(a-ur, -d)
-}
-
-// clipT tests t=`a`/`d` for insideness in `tE`, `tL`
-// tE <= t <= tL : inside
-// Enter test: tE -> t
-// Leave test:tL -> t
-func (i *interval) clipT(a, d float64) bool {
-	if isZero(d) {
-		return a <= 0.0
-	}
-
-	t := a / d
-
-	if d > 0.0 {
-		// Enter test (lower left x,y)
-		if t > i.tL {
-			return false
-		}
-		if t > i.tE {
-			i.tE = t
-		}
-	} else {
-		// Leave test (upper right x,y)
-		if t < i.tE {
-			return false
-		}
-		if t < i.tL {
-			i.tL = t
-		}
-	}
-	return true
 }
 
 // inside returns true if `a` is inside window `l`.
@@ -301,9 +258,10 @@ func (l liangBarsky) LineInside(line Line) bool {
 	return l.inside(line.A) && l.inside(line.B)
 }
 
-func isZero(a float64) bool {
-	return math.Abs(a) < tol
+// isZero returns true if `x` is close to zero.
+func isZero(x float64) bool {
+	return math.Abs(x) < tol
 }
 
-// tol is the tolerance on all measurements
+// tol is the tolerance on all measurements.
 const tol = 0.000001 * 0.000001

@@ -1,4 +1,4 @@
-package liang_test
+package clip_test
 
 import (
 	"math/rand"

@@ -70,6 +70,7 @@ func (r Rect) Valid() bool {
 	return r.Urx >= r.Llx && r.Ury >= r.Lly
 }
 
+// NDArray is like a Python 2-d ndarray
 type NDArray [][]float64
 
 func CreateNDArray(h, w int) NDArray {
@@ -81,7 +82,33 @@ func CreateNDArray(h, w int) NDArray {
 	return m
 }
 
+func SliceToNDArray(h, w int, a []float64) (NDArray, error) {
+	if len(a) != w*h {
+		return nil, fmt.Errorf("len(a)=%d h=%d w=%d", len(a), w, h)
+	}
+	backing := make([]float64, h*w)
+	copy(backing, a)
+	m := make([][]float64, h)
+	for y := 0; y < h; y++ {
+		m[y] = backing[y*w : (y+1)*w]
+	}
+	return m, nil
+}
+
+const (
+	// Maximum number of columns and rows to display
+	maxRows    = 10
+	maxColumns = 10
+)
+
 func (m NDArray) String() string {
+	return m.Show(10, 10)
+}
+
+// Show returns a string representation of `m`.
+// `maxRows`: Maximum number of rows to display.
+// `maxColumns`: Maximum number of columns to display.
+func (m NDArray) Show(maxRows, maxColumns int) string {
 	h := len(m)
 	if h == 0 {
 		return "[]"
@@ -105,12 +132,28 @@ func (m NDArray) String() string {
 
 	var sb strings.Builder
 	fmt.Fprint(&sb, "[")
+	skippedY := false
 	for y := 0; y < h; y++ {
+		if h > maxRows && maxRows <= y*2 && y*2 < h*2-maxRows {
+			if !skippedY {
+				fmt.Fprintf(&sb, "  "+format+"\n", "...")
+				skippedY = true
+			}
+			continue
+		}
 		if y > 0 {
 			fmt.Fprint(&sb, " ")
 		}
 		fmt.Fprint(&sb, "[")
+		skippedX := false
 		for x := 0; x < w-1; x++ {
+			if w > maxColumns && maxColumns <= x*2 && x*2 < w*2-maxColumns {
+				if !skippedX {
+					fmt.Fprintf(&sb, format+" ", "...")
+					skippedX = true
+				}
+				continue
+			}
 			fmt.Fprintf(&sb, format+" ", vals[x+w*y])
 		}
 		fmt.Fprintf(&sb, format+"]", vals[w*y+w-1])
@@ -121,4 +164,53 @@ func (m NDArray) String() string {
 	}
 	fmt.Fprint(&sb, "]")
 	return sb.String()
+}
+
+func (m NDArray) Shape() (h, w int) {
+	if len(m) == 0 {
+		return 0, 0
+	}
+	return len(m), len(m[0])
+}
+
+func (m NDArray) Transpose() NDArray {
+	h, w := m.Shape()
+	t := CreateNDArray(w, h)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			t[x][y] = m[y][x]
+		}
+	}
+	return t
+}
+
+func (m NDArray) Equals(d NDArray) bool {
+	h, w := m.Shape()
+	hd, wd := d.Shape()
+	if hd != h || wd != w {
+		return false
+	}
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			if d[y][x] != m[y][x] {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (m NDArray) Sub(d NDArray) (NDArray, error) {
+	h, w := m.Shape()
+	hd, wd := d.Shape()
+	if hd != h || wd != w {
+		return nil, fmt.Errorf("Dimension mismatch %dx%d - %dx%d", h, w, hd, wd)
+	}
+	t := CreateNDArray(h, w)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			t[y][x] = m[y][x] - d[y][x]
+		}
+	}
+	return t, nil
 }

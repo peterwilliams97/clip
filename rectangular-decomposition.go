@@ -1,267 +1,413 @@
 package clip
 
 import (
-	"fmt"
 	"math"
+	"sort"
+
+	"github.com/biogo/store/interval"
+	"github.com/unidoc/unidoc/common"
 )
 
-// liangBarsky is a Liang-Barsky clipper.
-type liangBarsky struct {
-	Rect
+type Vertex struct {
+	point   Point
+	iPath   int
+	index   int
+	concave bool
+	next    *Vertex
+	prev    *Vertex
+	visited bool
 }
 
-// NewLiangBarsky returns a liangBarsky with clip rectangle `window`.
-func NewLiangBarsky(window Rect) liangBarsky {
-	return liangBarsky{window}
+type Segment struct {
+	point      Point
+	start, end *Vertex
+	number     int
 }
 
-// interval is an interval on a line (a, b) parametrized by p(t) = a ∙ (1 - t) + b ∙ t
-// i.tE <= t <= i.tL for the interval
-type interval struct {
-	tE float64 // Value of t where it enters the clipping window.
-	tL float64 // Value of t where it leaves the clipping window.
-}
-
-// newInterval returns the t range for new a clipping interval on a line.
-// This must be 0-1 because a clipped line is p(t) = a ∙ (1 - t) + b ∙ t
-// i.e. t=0 -> p=a
-//      t=1 -> p=b
-func newInterval() interval {
-	return interval{0, 1}
-}
-
-// ClipLine clips the line between `a` and `b` to the rectangular window in `l`.
-// Parametrized point  p = a ∙ (1 - t) + b ∙ t for i.tE <= t <= i.tL
-func (l liangBarsky) ClipLine(line Line) (Line, bool) {
-	a, b := line.A, line.B
-	d := b.sub(a)
-
-	if d.isZero() && l.inside(a) {
-		return Line{a, b}, true
-	}
-	i := newInterval()
-	if !(i.clipRange(l.Llx, l.Urx, a.X, d.X) && // horizonal
-		i.clipRange(l.Lly, l.Ury, a.Y, d.Y)) { // vertical
-		return Line{}, false
-	}
-	a = line.Position(i.tE)
-	b = line.Position(i.tL)
-	if !l.inside(a) {
-		panic(fmt.Errorf("a=%+v outside lb=%+v", a, l))
-	}
-	if !l.inside(b) {
-		panic(fmt.Errorf("b=%+v outside lb=%+v", b, l))
-	}
-	return Line{a, b}, true
-}
-
-// clipT tests t=`a`/`d` for insideness in `tE` <= t*`d` <= `tL` betweem
-// tE <= t <= tL : inside
-// Enter test: tE -> t
-// Leave test:tL -> t
-func (i *interval) clipRange(ll, ur, a, d float64) bool {
-	return i.clipT(ll-a, d) && i.clipT(a-ur, -d)
-}
-
-// clipT tests t=`a`/`d` for insideness in `tE`, `tL`
-// tE <= t <= tL : inside
-// Enter test: tE -> t
-// Leave test:tL -> t
-func (i *interval) clipT(a, d float64) bool {
-	if isZero(d) {
-		return a <= 0.0
-	}
-
-	t := a / d
-
-	if d > 0.0 {
-		// Enter test (lower left x,y)
-		if t > i.tL {
-			return false
-		}
-		if t > i.tE {
-			i.tE = t
-		}
+func newSegment(start, end *Vertex, direction bool) *Segment {
+	var a, b float64
+	if direction {
+		a = start.point.X
+		b = end.point.X
 	} else {
-		// Leave test (upper right x,y)
-		if t < i.tE {
-			return false
-		}
-		if t < i.tL {
-			i.tL = t
-		}
+		a = start.point.Y
+		b = end.point.Y
 	}
-	return true
+	var point Point
+	if a < b {
+		point = Point{a, b}
+	} else {
+		point = Point{b, a}
+	}
+	return &Segment{
+		point:     point,
+		start:     start,
+		end:       end,
+		direction: direction,
+		number:    -1,
+	}
 }
 
-const infinity = math.MaxFloat64
+// DecomposeRegion breaks `paths` into non-overlapping rectangles.
+func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 
-// ClipPolygon returns `path` clipped to the `l` rectangular window,
-// This routine uses the Liang-Barsky algorithm for polygon clipping as
-// desribed in Foley & van Dam.  It's more efficient than the
-// Sutherland-Hodgman, but produces redundent turning vertices at the
-// corners of the clip region.  This makes rendering as a series of
-// triangles very awkward.
+	common.Log.Info("DecomposeRegion: paths=%d", len(paths))
+	for i, path := range paths {
+		common.Log.Info("\t%3d:%+v", i, path)
+	}
+	common.Log.Info("====================================")
 
-func (l liangBarsky) ClipPolygon(path []Point) []Point {
-	n := len(path)
+	// First step: unpack all vertices into internal format.
+	var vertices []Vertex
 
-	// Avoid special case for last edge
-	path = append(path, path[0])
-
-	clipped := make([]Point, 0, n)
-
-	ll := Point{l.Llx, l.Lly}
-	ur := Point{l.Urx, l.Ury}
-
-	var in, out Point              // Coordinates of entry and exit points
-	var tOut1, tIn2, tOut2 float64 // Parameter values of same
-	var tIn, tOut Point            // Parameter values for intersection
-
-	var o Point // The next point to be added
-
-	for i := 0; i < n; i++ { // for each edge
-		p0 := path[i]
-		p1 := path[i+1]
-		delta := p1.sub(p0)
-
-		// use this to determine which bounding lines for the clip region the
-		// containing line hits first
-		if delta.X > 0 || (isZero(delta.X) && p0.X > ur.X) {
-			in.X, out.X = ll.X, ur.X
-		} else {
-			in.X, out.X = ur.X, ll.X
-		}
-		if delta.Y > 0 || (isZero(delta.Y) && p0.Y > ur.Y) {
-			in.Y, out.Y = ll.Y, ur.Y
-		} else {
-			in.Y, out.Y = ur.Y, ll.Y
-		}
-
-		// find the t values for the x and y exit points
-		if !isZero(delta.X) {
-			tOut.X = (out.X - p0.X) / delta.X
-		} else if ll.X <= p0.X && p0.X <= ur.X {
-			tOut.X = infinity
-		} else {
-			tOut.X = -infinity
-		}
-		if !isZero(delta.Y) {
-			tOut.Y = (out.Y - p0.Y) / delta.Y
-		} else if ll.Y <= p0.Y && p0.Y <= ur.Y {
-			tOut.Y = infinity
-		} else {
-			tOut.Y = -infinity
-		}
-
-		// Order the two exit points
-		if tOut.X < tOut.Y {
-			tOut1, tOut2 = tOut.X, tOut.Y
-		} else {
-			tOut1, tOut2 = tOut.Y, tOut.X
-		}
-
-		if tOut2 > 0 {
-			if !isZero(delta.X) {
-				tIn.X = (in.X - p0.X) / delta.X
-			} else {
-				tIn.X = -infinity
-			}
-
-			if !isZero(delta.Y) {
-				tIn.Y = (in.Y - p0.Y) / delta.Y
-			} else {
-				tIn.Y = -infinity
-			}
-			if tIn.X < tIn.Y {
-				tIn2 = tIn.Y
-			} else {
-				tIn2 = tIn.X
-			}
-			if tOut1 < tIn2 { // no visible segment
-				if 0 < tOut1 && tOut1 <= 1 {
-					// line crosses over intermediate corner region
-					if tIn.X < tIn.Y {
-						o = Point{out.X, in.Y}
-					} else {
-						o = Point{in.X, out.Y}
-					}
-					clipped = append(clipped, o)
+	npaths := make([][]Vertex, len(paths))
+	for i, path := range paths {
+		n := len(path)
+		prev := path[n-3]
+		cur := path[n-2]
+		next := path[n-1]
+		common.Log.Info("DecomposeRegion: %3d: path=%+v n=%d\n\t prev=%#v\n\t  cur=%#v\n\t next=%#v",
+			i, path, n, prev, cur, next)
+		for j := 0; j < n; j++ {
+			prev = cur
+			cur = next
+			next = path[j]
+			common.Log.Info("j=%d\n\t prev=%+v\n\t  cur=%+v\n\t next=%+v", j, prev, cur, next)
+			concave := false
+			if prev.X == cur.X {
+				if next.X == cur.X {
+					continue
 				}
+				dir0 := prev.Y < cur.Y
+				dir1 := cur.X < next.X
+				concave = dir0 == dir1
+				common.Log.Info("  @1 dir0=%t dir1=%t concave=%t", dir0, dir1, concave)
 			} else {
+				if next.Y == cur.Y {
+					continue
+				}
+				dir0 := prev.X < cur.X
+				dir1 := cur.Y < next.Y
+				concave = dir0 != dir1
+				common.Log.Info("  @1 dir0=%t dir1=%t concave=%t", dir0, dir1, concave)
+			}
+			if clockwise {
+				concave = !concave
+			}
+			vtx := Vertex{
+				point:   cur,
+				iPath:   i,
+				index:   (j + n - 1) % n,
+				concave: concave,
+			}
+			common.Log.Info("vtx=%+v", vtx)
+			npaths[i] = append(npaths[i], vtx)
+			vertices = append(vertices, vtx)
+		}
+	}
 
-				// line crosses though window
-				if 0 < tOut1 && tIn2 <= 1 {
-					if 0 <= tIn2 { // visible segment
-						o = Point{in.X, p0.Y + tIn.X*delta.Y}
-						if tIn.X > tIn.Y {
-							o = Point{in.X, p0.Y + tIn.X*delta.Y}
-						} else {
-							o = Point{p0.X + tIn.Y*delta.X, in.Y}
-						}
-						clipped = append(clipped, o)
-					}
+	// Next build interval trees for segments, link vertices into a list
+	var hsegments []*Segment
+	var vsegments []*Segment
 
-					if tOut1 <= 1 {
-						if tOut.X < tOut.Y {
-							o = Point{out.X, p0.Y + tOut.X*delta.Y}
-						} else {
-							o = Point{p0.X + tOut.Y*delta.X, out.Y}
-						}
-						clipped = append(clipped, o)
-					} else {
-						clipped = append(clipped, p1)
-					}
+	for i := 0; i < len(npaths); i++ {
+		p := npaths[i]
+		for j := 0; j < len(p); j++ {
+			a := &p[j]
+			b := &p[(j+1)%len(p)]
+			if a.point.X == b.point.Y {
+				hsegments = append(hsegments, newSegment(a, b, false))
+			} else {
+				vsegments = append(vsegments, newSegment(a, b, true))
+			}
+			if clockwise {
+				a.prev = b
+				b.next = a
+			} else {
+				a.next = b
+				b.prev = a
+			}
+		}
+	}
+	htree := createIntervalTree(hsegments)
+	vtree := createIntervalTree(vsegments)
+
+	// Find horizontal and vertical diagonals.
+	hdiagonals := getDiagonals(vertices, npaths, false, vtree)
+	vdiagonals := getDiagonals(vertices, npaths, true, htree)
+
+	// Find all splitting edges
+	splitters := findSplitters(hdiagonals, vdiagonals)
+
+	// Cut all the splitting diagonals
+	for _, splitter := range splitters {
+		splitSegment(&splitter)
+	}
+
+	// Split all concave vertices
+	splitConcave(vertices)
+
+	// Return regions
+	return findRegions(vertices)
+}
+
+func splitConcave(vertices []Vertex) {
+	common.Log.Info("splitConcave: vertices=%d", len(vertices))
+	for i, v := range vertices {
+		common.Log.Info("\t%3d: %+v", i, v)
+	}
+	common.Log.Info("=============================")
+	// First step: build segment tree from vertical segments
+	var leftsegments []*Segment
+	var rightsegments []*Segment
+
+	for i, v := range vertices {
+		common.Log.Info("\t%3d: %+v", i, v)
+		if v.next.point.Y == v.point.Y {
+			if v.next.point.X < v.point.X {
+				leftsegments = append(leftsegments, newSegment(&v, v.next, true))
+			} else {
+				rightsegments = append(rightsegments, newSegment(&v, v.next, true))
+			}
+		}
+	}
+
+	lefttree := createIntervalTree(leftsegments)
+	righttree := createIntervalTree(rightsegments)
+	for _, v := range vertices {
+		if !v.concave {
+			continue
+		}
+
+		// Compute orientation
+		y := v.point.Y
+		var direct bool
+		if v.prev.point.X == v.point.X {
+			direct = v.prev.point.Y < y
+		} else {
+			direct = v.next.point.Y < y
+		}
+		direction := 1
+		if direct {
+			direction = -1
+		}
+
+		// Scan a horizontal ray
+		var closestSegment *Segment
+		closestDistance := infinity * float64(direction)
+		if direction < 0 {
+			righttree.queryPoint(v.point.X, func(h *Segment) {
+				x := h.start.point.Y
+				if x < y && x > closestDistance {
+					closestDistance = x
+					closestSegment = h
+				}
+			})
+		} else {
+			lefttree.queryPoint(v.point.X, func(h *Segment) {
+				x := h.start.point.Y
+				if x > y && x < closestDistance {
+					closestDistance = x
+					closestSegment = h
+				}
+			})
+		}
+
+		// Create two splitting vertices
+		point := Point{v.point.X, closestDistance}
+		splitA := Vertex{point: point}
+		splitB := Vertex{point: point}
+
+		// Clear concavity flag
+		v.concave = false
+
+		// Split vertices
+		splitA.prev = closestSegment.start
+		closestSegment.start.next = &splitA
+		splitB.next = closestSegment.end
+		closestSegment.end.prev = &splitB
+
+		// Update segment tree
+		var tree IntervalTree
+		if direction < 0 {
+			tree = righttree
+		} else {
+			tree = lefttree
+		}
+		tree.remove(closestSegment)
+		tree.insert(newSegment(closestSegment.start, &splitA, true))
+		tree.insert(newSegment(&splitB, closestSegment.end, true))
+
+		// Append vertices
+		vertices = append(vertices, splitA, splitB)
+
+		// Cut v, 2 different cases
+		if v.prev.point.X == v.point.X {
+			// Case 1
+			//             ^
+			//             |
+			// --->*+++++++X
+			//     |       |
+			//     V       |
+			splitA.next = &v
+			splitB.prev = v.prev
+		} else {
+			// Case 2
+			//     |       ^
+			//     V       |
+			// <---*+++++++X
+			//             |
+			//             |
+			splitA.next = v.next
+			splitB.prev = &v
+		}
+
+		// Fix up links
+		splitA.next.prev = &splitA
+		splitB.prev.next = &splitB
+	}
+}
+
+type IntervalTree struct{}
+
+// type Diagonal struct{}
+type Splitter struct{}
+
+// Stub
+func createIntervalTree(segments []*Segment) *interval.IntTree {
+	tree := interval.IntTree{}
+	return &tree
+}
+
+func getDiagonals(vertices []Vertex, npaths [][]Vertex, direction bool, tree *interval.IntTree) []*Segment {
+	var concave []Vertex
+	for _, v := range vertices {
+		if v.concave {
+			concave = append(concave, v)
+		}
+	}
+	if direction {
+		sort.Slice(concave, func(i, j int) bool {
+			a, b := concave[i], concave[j]
+			d := a.point.Y - b.point.Y
+			if d != 0 {
+				return d > 0
+			}
+			return a.point.X > b.point.X
+		})
+	} else {
+		sort.Slice(concave, func(i, j int) bool {
+			a, b := concave[i], concave[j]
+			d := a.point.X - b.point.X
+			if d != 0 {
+				return d > 0
+			}
+			return a.point.Y > b.point.Y
+		})
+	}
+
+	var diagonals []*Segment
+	for i := 1; i < len(concave); i++ {
+		a := concave[i-1]
+		b := concave[i]
+		var sameDirection bool
+		if direction {
+			sameDirection = a.point.Y == b.point.Y
+		} else {
+			sameDirection = a.point.X == b.point.X
+		}
+
+		if sameDirection {
+			if a.iPath == b.iPath {
+				n := len(npaths[a.iPath])
+				d := (a.index - b.index + n) % n
+				if d == 1 || d == n-1 {
+					continue
 				}
 			}
-
-			if 0 < tOut2 && tOut2 <= 1 {
-				o = Point{out.X, out.Y}
-				clipped = append(clipped, o)
+			if !testSegment(a, b, tree, direction) {
+				// Check orientation of diagonal
+				diagonals = append(diagonals, newSegment(&a, &b, direction))
 			}
 		}
 	}
-
-	return trim(removeRepeats(clipped))
+	return diagonals
 }
 
-// removeRepeats returns `path` with repeated points removed.
-func removeRepeats(path []Point) []Point {
-	if len(path) == 0 {
-		return []Point{}
+func testSegment(a, b Vertex, tree IntervalTree, direction bool) bool {
+	ax := a.point.Cpt(direction)
+	bx := b.point.Cpt(direction)
+
+	return false
+}
+function testSegment(a, b, tree, direction) {
+  var ax = a.point[direction^1]
+  var bx = b.point[direction^1]
+  return !!tree.queryPoint(a.point[direction], function(s) {
+    var x = s.start.point[direction^1]
+    if(ax < x && x < bx) {
+      return true
+    }
+    return false
+  })
+}
+
+// SegInterval is an interval of segments
+type SegInterval struct {
+	x float64
+	UID        uintptr
+	// Payload    interface{}
+}
+
+func (i SegInterval) Overlap(b interval.IntRange) bool {
+	// Half-open interval indexing.
+	return i.End > b.Start && i.start < b.End
+}
+func (i SegInterval) ID() uintptr              { return i.UID }
+func (i SegInterval) Range() interval.IntRange { return interval.IntRange{i.start, i.End} }
+func (i SegInterval) String() string {
+	return fmt.Sprintf("[%d,%d)#%d", i.start, i.End, i.UID)
+}
+
+func findSplitters(hdiagonals, vdiagonals []*Segment) []Splitter {
+	return nil
+}
+
+func splitSegment(splitter *Splitter) {
+}
+
+func (t *IntervalTree) queryPoint(x float64, f func(h *Segment)) {
+}
+func (t *IntervalTree) insert(h *Segment) {
+}
+func (t *IntervalTree) remove(h *Segment) {
+}
+
+func findRegions(vertices []Vertex) []Rect {
+	n := len(vertices)
+	for i := 0; i < n; i++ {
+		vertices[i].visited = false
 	}
-	out := make([]Point, 0, len(path))
-	out[0] = path[0]
-	for _, p := range path[1:] {
-		if !p.Equals(out[len(out)-1]) {
-			out = append(out, p)
+	// Walk over vertex list
+	var rectangles []Rect
+	for i := 0; i < n; i++ {
+		v := vertices[i]
+		if v.visited {
+			continue
 		}
+		// Walk along loop
+		lo := Point{infinity, infinity}
+		hi := Point{-infinity, -infinity}
+		for ; !v.visited; v = *v.next {
+			p := v.point
+			lo.X = math.Min(p.X, lo.X)
+			hi.X = math.Max(p.X, hi.X)
+			lo.Y = math.Min(p.Y, lo.X)
+			hi.Y = math.Max(p.Y, hi.X)
+			v.visited = true
+		}
+		r := Rect{Llx: lo.X, Lly: lo.Y, Urx: hi.X, Ury: hi.Y}
+		rectangles = append(rectangles, r)
 	}
-	return out
+	return rectangles
 }
-
-// trim returns a copy of `path` with minimal backing memory.
-func trim(path []Point) []Point {
-	out := make([]Point, len(path))
-	copy(out, path)
-	return out
-}
-
-// inside returns true if `a` is inside window `l`.
-func (l liangBarsky) inside(a Point) bool {
-	return l.Llx-tol <= a.X && a.X <= l.Urx+tol &&
-		l.Lly-tol <= a.Y && a.Y <= l.Ury+tol
-}
-
-// inside returns true if all points on `line` are inside window `l`.
-func (l liangBarsky) LineInside(line Line) bool {
-	return l.inside(line.A) && l.inside(line.B)
-}
-
-// isZero returns true if `x` is close to zero.
-func isZero(x float64) bool {
-	return math.Abs(x) < tol
-}
-
-// tol is the tolerance on all measurements.
-const tol = 0.000001 * 0.000001

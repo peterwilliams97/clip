@@ -7,6 +7,14 @@ import (
 	"github.com/peterwilliams97/clip"
 )
 
+func TestRect(t *testing.T) {
+	r := clip.Rect{Urx: 10, Ury: 20}
+	area := r.Area()
+	if area != 200 {
+		t.Fatalf("Incorrect area: r=%+v area=%g", r, area)
+	}
+}
+
 func TestNDArray(t *testing.T) {
 	testArray(t, 4, 20, 3.0)
 	testArray(t, 5, 9, 10000.0/3.0)

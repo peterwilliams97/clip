@@ -10,6 +10,14 @@ type Point struct {
 	X, Y float64
 }
 
+// Cpt returns p.Y if `vertical` is true else p.X.
+func (p Point) Cpt(vertical bool) float64 {
+	if vertical {
+		return p.Y
+	}
+	return p.X
+}
+
 func (p Point) add(d Point) Point {
 	return Point{p.X + d.X, p.Y + d.Y}
 }
@@ -63,6 +71,9 @@ type Rect struct {
 }
 
 func (r Rect) Area() float64 {
+	if !r.Valid() {
+		panic(fmt.Errorf("invalid rectangle r=%+v", r))
+	}
 	return (r.Urx - r.Llx) * (r.Ury - r.Lly)
 }
 

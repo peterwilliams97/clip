@@ -15,19 +15,19 @@ func NewLiangBarsky(window Rect) liangBarsky {
 	return liangBarsky{window}
 }
 
-// interval is an interval on a line (a, b) parametrized by p(t) = a ∙ (1 - t) + b ∙ t
-// i.tE <= t <= i.tL for the interval
-type interval struct {
+// tInterval is an tInterval on a line (a, b) parametrized by p(t) = a ∙ (1 - t) + b ∙ t
+// i.tE <= t <= i.tL for the tInterval
+type tInterval struct {
 	tE float64 // Value of t where it enters the clipping window.
 	tL float64 // Value of t where it leaves the clipping window.
 }
 
-// newInterval returns the t range for new a clipping interval on a line.
+// newTInterval returns the t range for new a clipping tInterval on a line.
 // This must be 0-1 because a clipped line is p(t) = a ∙ (1 - t) + b ∙ t
 // i.e. t=0 -> p=a
 //      t=1 -> p=b
-func newInterval() interval {
-	return interval{0, 1}
+func newTInterval() tInterval {
+	return tInterval{0, 1}
 }
 
 // ClipLine clips the line between `a` and `b` to the rectangular window in `l`.
@@ -39,7 +39,7 @@ func (l liangBarsky) ClipLine(line Line) (Line, bool) {
 	if d.isZero() && l.inside(a) {
 		return Line{a, b}, true
 	}
-	i := newInterval()
+	i := newTInterval()
 	if !(i.clipRange(l.Llx, l.Urx, a.X, d.X) && // horizonal
 		i.clipRange(l.Lly, l.Ury, a.Y, d.Y)) { // vertical
 		return Line{}, false
@@ -59,7 +59,7 @@ func (l liangBarsky) ClipLine(line Line) (Line, bool) {
 // tE <= t <= tL : inside
 // Enter test: tE -> t
 // Leave test:tL -> t
-func (i *interval) clipRange(ll, ur, a, d float64) bool {
+func (i *tInterval) clipRange(ll, ur, a, d float64) bool {
 	return i.clipT(ll-a, d) && i.clipT(a-ur, -d)
 }
 
@@ -67,7 +67,7 @@ func (i *interval) clipRange(ll, ur, a, d float64) bool {
 // tE <= t <= tL : inside
 // Enter test: tE -> t
 // Leave test:tL -> t
-func (i *interval) clipT(a, d float64) bool {
+func (i *tInterval) clipT(a, d float64) bool {
 	if isZero(d) {
 		return a <= 0.0
 	}
@@ -97,12 +97,6 @@ func (i *interval) clipT(a, d float64) bool {
 const infinity = math.MaxFloat64
 
 // ClipPolygon returns `path` clipped to the `l` rectangular window,
-// This routine uses the Liang-Barsky algorithm for polygon clipping as
-// desribed in Foley & van Dam.  It's more efficient than the
-// Sutherland-Hodgman, but produces redundent turning vertices at the
-// corners of the clip region.  This makes rendering as a series of
-// triangles very awkward.
-
 func (l liangBarsky) ClipPolygon(path []Point) []Point {
 	n := len(path)
 
@@ -114,9 +108,9 @@ func (l liangBarsky) ClipPolygon(path []Point) []Point {
 	ll := Point{l.Llx, l.Lly}
 	ur := Point{l.Urx, l.Ury}
 
-	var in, out Point              // Coordinates of entry and exit points
-	var tOut1, tIn2, tOut2 float64 // Parameter values of same
-	var tIn, tOut Point            // Parameter values for intersection
+	var in, out Point              // Coordinates of entry and exit points.
+	var tOut1, tIn2, tOut2 float64 // Parameter values of same.
+	var tIn, tOut Point            // Parameter values for intersection.
 
 	var o Point // The next point to be added
 

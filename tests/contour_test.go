@@ -88,19 +88,29 @@ type contourCase struct {
 }
 
 func testContour(t *testing.T, test contourCase) {
+	testContourDirection(t, test, false)
+	testContourDirection(t, test, true)
+}
+func testContourDirection(t *testing.T, test contourCase, clockwise bool) {
+
 	array, err := clip.SliceToNDArray(test.h, test.w, test.img)
 	if err != nil {
 		t.Fatalf("err=%v", err)
 	}
-	clockwise := false
+
 	poly := clip.GetContours(array, clockwise)
+	expected := test.expected
+	if clockwise {
+		expected = reversePoly(expected)
+	}
 
 	fmt.Printf("array=\n%s\n", array)
-	fmt.Printf("expected=%+v\n", test.expected)
-	fmt.Printf("     got=%+v\n", poly)
+	fmt.Printf("expected0=%+v\n", test.expected)
+	fmt.Printf("expected =%+v\n", expected)
+	fmt.Printf("      got=%+v\n", poly)
 
-	if !samePoly(test.expected, poly) {
-		t.Fatalf("Incorrect results:\n\tgot=%+v\n\texpected=%+v", poly, test.expected)
+	if !samePoly(expected, poly) {
+		t.Fatalf("Incorrect results:\n\tgot=%+v\n\texpected=%+v", poly, expected)
 	}
 }
 
@@ -116,6 +126,7 @@ func samePoly(poly0, poly []clip.Path) bool {
 	}
 	return true
 }
+
 func samePath(path0, path clip.Path) bool {
 	if len(path0) != len(path) {
 		return false
@@ -127,4 +138,24 @@ func samePath(path0, path clip.Path) bool {
 		}
 	}
 	return true
+}
+
+func reversePoly(poly []clip.Path) []clip.Path {
+	var reversed []clip.Path
+	for _, path := range poly {
+		reversed = append(reversed, reversePath(path))
+	}
+	return reversed
+}
+
+// reversePath returns the clockwise contour ordering. This is the reverse of the standard ordering
+// starting from the same point.
+func reversePath(path clip.Path) clip.Path {
+	n := len(path)
+	reversed := make([]clip.Point, n)
+	for i, p := range path {
+		k := (n - i) % n
+		reversed[k] = p
+	}
+	return reversed
 }

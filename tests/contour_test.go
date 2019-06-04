@@ -104,6 +104,8 @@ func testContourDirection(t *testing.T, test contourCase, clockwise bool) {
 		expected = reversePoly(expected)
 	}
 
+	fmt.Println("==============================================")
+	fmt.Printf("clockwise=%t\n", clockwise)
 	fmt.Printf("array=\n%s\n", array)
 	fmt.Printf("expected0=%+v\n", test.expected)
 	fmt.Printf("expected =%+v\n", expected)

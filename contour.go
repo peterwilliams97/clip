@@ -2,6 +2,9 @@ package clip
 
 import "sort"
 
+// GetContours extracts a 2D rectilinear polygon from `array`, a binary image encoded as an NDArray.
+// `array` is an NDArray reprensenting an image.
+// Set `clockwise` to true to return clockwise contours.
 func GetContours(array NDArray, clockwise bool) []Path {
 
 	// First extract horizontal contours and vertices

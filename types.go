@@ -3,6 +3,8 @@ package clip
 import (
 	"fmt"
 	"strings"
+
+	"github.com/unidoc/unidoc/common"
 )
 
 // Point is a 2-d point.
@@ -103,6 +105,7 @@ func SliceToNDArray(h, w int, a []float64) (NDArray, error) {
 	for y := 0; y < h; y++ {
 		m[y] = backing[y*w : (y+1)*w]
 	}
+	common.Log.Debug("SliceToNDArray: m=%s", NDArray(m))
 	return m, nil
 }
 

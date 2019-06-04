@@ -15,7 +15,7 @@ func init() {
 
 func TestOverlap(t *testing.T) {
 	for i, test := range overlapCases {
-		fmt.Printf("test %d -----------------------------\n%s\n", i, test)
+		common.Log.Debug("test %d -----------------------------\n%s", i, test)
 		testOverlap(t, test)
 	}
 }

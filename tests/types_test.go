@@ -1,12 +1,15 @@
 package clip_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/peterwilliams97/clip"
+	"github.com/unidoc/unidoc/common"
 )
 
+func init() {
+	common.SetLogger(common.NewConsoleLogger(common.LogLevelInfo))
+}
 func TestRect(t *testing.T) {
 	r := clip.Rect{Urx: 10, Ury: 20}
 	area := r.Area()
@@ -38,7 +41,7 @@ func testArray(t *testing.T, h, w int, fac float64) {
 			count++
 		}
 	}
-	fmt.Printf("m= %d x %d =\n%s\n%s\n", h, w, m, m.Show(2, 2))
+	common.Log.Debug("m= %d x %d =\n%s\n%s", h, w, m, m.Show(2, 2))
 }
 
 func testTranspose(t *testing.T, h, w int, fac float64) {

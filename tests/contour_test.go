@@ -1,12 +1,16 @@
 package clip_test
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/unidoc/unidoc/common"
 
 	"github.com/peterwilliams97/clip"
 )
 
+func init() {
+	common.SetLogger(common.NewConsoleLogger(common.LogLevelInfo))
+}
 func TestContour(t *testing.T) {
 	for _, test := range contourTests {
 		testContour(t, test)
@@ -91,8 +95,8 @@ func testContour(t *testing.T, test contourCase) {
 	testContourDirection(t, test, false)
 	testContourDirection(t, test, true)
 }
-func testContourDirection(t *testing.T, test contourCase, clockwise bool) {
 
+func testContourDirection(t *testing.T, test contourCase, clockwise bool) {
 	array, err := clip.SliceToNDArray(test.h, test.w, test.img)
 	if err != nil {
 		t.Fatalf("err=%v", err)
@@ -104,12 +108,12 @@ func testContourDirection(t *testing.T, test contourCase, clockwise bool) {
 		expected = reversePoly(expected)
 	}
 
-	fmt.Println("==============================================")
-	fmt.Printf("clockwise=%t\n", clockwise)
-	fmt.Printf("array=\n%s\n", array)
-	fmt.Printf("expected0=%+v\n", test.expected)
-	fmt.Printf("expected =%+v\n", expected)
-	fmt.Printf("      got=%+v\n", poly)
+	common.Log.Debug("==============================================")
+	common.Log.Debug("clockwise=%t", clockwise)
+	common.Log.Debug("array=\n%s", array)
+	common.Log.Debug("expected0=%+v", test.expected)
+	common.Log.Debug("expected =%+v", expected)
+	common.Log.Debug("      got=%+v", poly)
 
 	if !samePoly(expected, poly) {
 		t.Fatalf("Incorrect results:\n\tgot=%+v\n\texpected=%+v", poly, expected)

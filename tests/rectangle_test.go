@@ -2,7 +2,6 @@ package clip_test
 
 import (
 	"math"
-	"sort"
 	"testing"
 
 	"github.com/peterwilliams97/clip"
@@ -214,20 +213,69 @@ func TestDecomposition(t *testing.T) {
 
 }
 
-func verifyDecomp(t *testing.T, paths []clip.Path, ccw bool, expected int) {
-	rectangles := clip.DecomposeRegion(paths, ccw)
+// bmp tests  with a bitmap image specified by
+// `h`: height in pixels
+// `w`: width in pixels
+// `img`: pixels in image
+func bmp(t *testing.T, h, w int, img []float64, expected int) {
+	common.Log.Info("bmp: h=%d w=%d img=%+v expected=%d", h, w, img, expected)
+	m, err := clip.SliceToNDArray(h, w, img)
+	if err != nil {
+		t.Fatalf("err=%v", err)
+	}
 
-	overlaps0 := boxOverlap(rectangles)
-	var overlaps []Overlap
+	common.Log.Info("bmp: m=%s", m)
+	paths := clip.GetContours(m, false)
+	common.Log.Info("bmp: paths=%+v", paths)
+	test(t, paths, false, expected)
+	panic("Done")
+}
+
+func test(t *testing.T, paths []clip.Path, clockwise bool, expected int) {
+	// Check all 4 orientations
+	for sx := 1; sx >= -1; sx -= 2 {
+		for sy := 1; sy >= -1; sy -= 2 {
+			npaths := make([]clip.Path, len(paths))
+			for i, path := range paths {
+				out := make(clip.Path, len(path))
+				for j, p := range path {
+					out[j] = clip.Point{X: float64(sx) * p.X, Y: float64(sy) * p.Y}
+				}
+				npaths[i] = out
+			}
+
+			var nclockwise bool
+			if sx*sy < 0 {
+				nclockwise = !clockwise
+			} else {
+				nclockwise = clockwise
+			}
+			verifyDecomp(t, npaths, nclockwise, expected)
+		}
+	}
+}
+
+// verifyDecomp tests DecomposeRegion on polygon `paths`.
+// `clockwise` is true if
+// `expected` is the expected number of overlaps.
+func verifyDecomp(t *testing.T, paths []clip.Path, ccw bool, expected int) {
+	clockwise := !ccw
+	rectangles := clip.DecomposeRegion(paths, clockwise)
+	common.Log.Info("verifyDecomp:\n\t paths=%d %+v\n\t clockwise=%t expected=%d\n\t rectangles=%d %+v",
+		len(paths), paths, clockwise, expected, len(rectangles), rectangles)
+
+	if len(rectangles) != expected {
+		t.Fatalf("overlaps=%d expected=%d", len(rectangles), expected)
+	}
+
+	overlaps0 := clip.BoxOverlap(rectangles)
+	var overlaps []clip.Overlap
 	for _, o := range overlaps0 {
-		a := rectangles[o.i1]
-		b := rectangles[o.i2]
+		a := rectangles[o.I1]
+		b := rectangles[o.I2]
 		if math.Min(a.Urx, b.Urx) > math.Max(a.Llx, b.Llx) && math.Min(a.Ury, b.Ury) > math.Max(a.Lly, b.Lly) {
 			overlaps = append(overlaps, o)
 		}
-	}
-	if len(overlaps) != expected {
-		t.Fatalf("overlaps=%d expected=%d", len(overlaps), expected)
 	}
 
 	// t.same(boxOverlap(rectangles).filter(function(x) {
@@ -244,7 +292,7 @@ func verifyDecomp(t *testing.T, paths []clip.Path, ccw bool, expected int) {
 	//   return true
 	// }), [], "non-overlap")
 
-	//Compute area for polygon and check each path is covered by an edge of
+	// Compute area for polygon and check each path is covered by an edge of
 	area := 0.0
 	for _, pathSet := range paths {
 		for j, a := range pathSet {
@@ -254,11 +302,11 @@ func verifyDecomp(t *testing.T, paths []clip.Path, ccw bool, expected int) {
 			}
 		}
 	}
-	if !ccw {
+	if !clockwise {
 		area = -area
 	}
 
-	//Compute area for boxes
+	// Compute area for boxes
 	boxarea := 0.0
 	for _, r := range rectangles {
 		boxarea += r.Area()
@@ -273,163 +321,6 @@ func verifyDecomp(t *testing.T, paths []clip.Path, ccw bool, expected int) {
 	//TODO: Add more tests here?
 }
 
-func test(t *testing.T, paths []clip.Path, ccw bool, expected int) {
-	// Check all 4 orientations
-	for sx := 1; sx >= -1; sx -= 2 {
-		for sy := 1; sy >= -1; sy -= 2 {
-			npaths := make([]clip.Path, len(paths))
-			for i, path := range paths {
-				out := make(clip.Path, len(path))
-				for j, p := range path {
-					out[j] = clip.Point{X: float64(sx) * p.X, Y: float64(sy) * p.Y}
-				}
-				npaths[i] = out
-			}
-
-			var nccw bool
-			if sx*sy < 0 {
-				nccw = !ccw
-			} else {
-				nccw = ccw
-			}
-			verifyDecomp(t, npaths, nccw, expected)
-		}
-	}
-}
-
-// Test with a bitmap image
-func bmp(t *testing.T, h, w int, img []float64, expected int) {
-	m, err := clip.SliceToNDArray(h, w, img)
-	if err != nil {
-		panic(err)
-	}
-
-	paths := clip.GetContours(m, true)
-	test(t, paths, false, expected)
-}
-
-// Michael Doescher
-// October 10, 2013
-// This program reports overlapping boxes
-// Input = an array of box coordinates.  Each box is defined as an array of points.  The points
-//         represent the lower left and upper right corner.
-// Output = A two dimensional array.  Each row contains two values indicating the index value of the
-//          boxes from the input that overlap
-func boxOverlap(boxes []clip.Rect) []Overlap {
-	events := generateEvents(boxes)
-	sort.Slice(events, func(i, j int) bool {
-		a, b := events[i], events[j]
-		if a.x < b.x {
-			return false
-		}
-		if a.x > b.x {
-			return true
-		}
-		if a.x == b.x && a.typ == "add" && b.typ == "remove" {
-			return false // adding before removing allows for boxes that overlap
-		}
-		if a.x == b.x && a.typ == "remove" && b.typ == "add" {
-			return true // only on the edge to count as overlapping.
-		}
-		return false
-	})
-	return generateOvelapList(boxes, events)
-}
-
-// module.exports = function(boxes) {
-// 	// if (!isInputOk(boxes)) {return null;}
-// 	var events = generateEvents(boxes);
-// 	events.sort(compare);
-// 	overlaps = new Array();
-// 	var overlaps = generateOvelapList(boxes, events, overlaps);
-// 	return overlaps;
-// }
-
-/*
-[
-	[[0, 0], [1, 1]], 			//box 1
-	[[0.5, 0.5], [10, 10]]		//box 2
-]
-*/
-
-type Overlap struct {
-	i1, i2 int // Indexes in boxes array of overlapping pair of boxes
-}
-
-type Event struct {
-	x     float64
-	typ   string
-	index int
-}
-
-func generateEvents(boxes []clip.Rect) []Event {
-	var leftEvents, rightEvents []Event
-
-	for i, b := range boxes { // traverse the list of boxes
-		leftx := math.Min(b.Llx, b.Urx)
-		rightx := math.Max(b.Llx, b.Urx)
-
-		eventl := Event{
-			x:     leftx,
-			typ:   "add",
-			index: i,
-		}
-		leftEvents = append(leftEvents, eventl)
-		eventr := Event{
-			x:     rightx,
-			typ:   "remove",
-			index: i,
-		}
-		rightEvents = append(rightEvents, eventr)
-	}
-	events := make([]Event, len(leftEvents)+len(rightEvents))
-	for i, e := range leftEvents {
-		events[len(leftEvents)-1-i] = e
-	}
-	for i, e := range rightEvents {
-		events[len(leftEvents)+i] = e
-	}
-	return events
-}
-
-// func compare(a,b) {
-//   if (a.x < b.x)
-//      return -1;
-//   if (a.x > b.x)
-//     return 1;
-//   if (a.x == b.x && a.type == "add" && b.type == "remove") return -1;	// adding before removing allows for boxes that overlap
-//   if (a.x == b.x && a.type == "remove" && b.type == "add") return 1; 	// only on the edge to count as overlapping.
-//   return 0;
-// }
-
-func generateOvelapList(boxes []clip.Rect, events []Event) []Overlap {
-	var Q []int            // a list of indices into the boxes array of boxes that intersect the sweeping plane
-	var overlaps []Overlap // pairs of boxes that overlap (indices into the boxes array
-
-	for _, e := range events {
-		if e.typ == "add" {
-			overlaps = findOverlap(Q, e.index, overlaps, boxes)
-			Q = append(Q, e.index)
-		}
-		if e.typ == "remove" {
-			ind := -1
-			for i, ee := range events {
-				if Q[i] == ee.index {
-					ind = i
-					break
-				}
-			}
-			if ind < 0 {
-				panic("cant happen")
-			}
-			// ind := Q.indexOf(events[i].index)
-			// Q.splice(ind, 1);
-			Q = append(Q[:ind], Q[ind:]...)
-		}
-	}
-	return overlaps
-}
-
 func sliceIndex(limit int, predicate func(i int) bool) int {
 	for i := 0; i < limit; i++ {
 		if predicate(i) {
@@ -437,35 +328,4 @@ func sliceIndex(limit int, predicate func(i int) bool) int {
 		}
 	}
 	return -1
-}
-
-func findOverlap(Q []int, box int, overlaps []Overlap, boxes []clip.Rect) []Overlap {
-	if len(Q) == 0 {
-		return overlaps
-	}
-	for _, q := range Q {
-		b := boxes[q]
-		eb := boxes[box]
-		y1 := math.Min(b.Lly, b.Ury)
-		y2 := math.Max(b.Lly, b.Ury)
-		ey1 := math.Min(eb.Lly, eb.Ury)
-		ey2 := math.Max(eb.Lly, eb.Ury)
-
-		add := (ey1 >= y1 && ey1 <= y2) ||
-			(ey2 >= y1 && ey2 <= y2) ||
-			(ey1 < y1 && ey2 > y2)
-
-		if add {
-			o := createOverlap(q, box)
-			overlaps = append(overlaps, o)
-		}
-	}
-	return overlaps
-}
-
-func createOverlap(a, b int) Overlap {
-	if a > b {
-		a, b = b, a
-	}
-	return Overlap{a, b}
 }

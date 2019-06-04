@@ -23,7 +23,7 @@ func TestOverlap(t *testing.T) {
 func testOverlap(t *testing.T, test overlapTest) {
 	overlap := clip.BoxOverlap(test.boxes)
 	if !sameOverlap(test.expected, overlap) {
-		t.Fatalf("Wrong overlap\n\tboxes=%d %v\n\texpected=%d %v\n\t   got=%d %v",
+		t.Fatalf("Wrong overlap\n\tboxes=%d %v\n\texpected=%d %v\n\t     got=%d %v",
 			len(test.boxes), test.boxes, len(test.expected), test.expected, len(overlap), overlap)
 	}
 }
@@ -75,6 +75,38 @@ var overlapCases = []overlapTest{
 	overlapTest{
 		boxes: []clip.Rect{
 			clip.Rect{0, 0, 1, 1},
+			clip.Rect{0.5, 0.5, 1.5, 1.5},
+			clip.Rect{1.1, 1, 2, 2},
+		},
+		expected: []clip.Overlap{
+			clip.Overlap{0, 1},
+			clip.Overlap{1, 2},
+		},
+	},
+	overlapTest{
+		boxes: []clip.Rect{
+			clip.Rect{0, 0, 1, 1},
+			clip.Rect{0.5, 0.5, 1.5, 1.5},
+			clip.Rect{1.6, 1, 2, 2},
+		},
+		expected: []clip.Overlap{
+			clip.Overlap{0, 1},
+		},
+	},
+	overlapTest{
+		boxes: []clip.Rect{
+			clip.Rect{0, 0, 1, 1},
+			clip.Rect{0, 0.5, 1, 1.5},
+			clip.Rect{0, 1.1, 1, 2},
+		},
+		expected: []clip.Overlap{
+			clip.Overlap{0, 1},
+			clip.Overlap{1, 2},
+		},
+	},
+	overlapTest{
+		boxes: []clip.Rect{
+			clip.Rect{0, 0, 1, 1},
 			clip.Rect{0.5, 0.5, 0.75, 0.75},
 			clip.Rect{2, 0, 3, 1},
 			clip.Rect{2.5, -10, 2.75, 10},
@@ -99,8 +131,8 @@ var overlapCases = []overlapTest{
 			clip.Overlap{0, 1},
 			clip.Overlap{2, 3},
 			clip.Overlap{2, 7},
-			clip.Overlap{4, 7},
 			clip.Overlap{4, 5},
+			clip.Overlap{4, 7},
 		},
 	},
 }

@@ -7,8 +7,9 @@ import (
 	"github.com/unidoc/unidoc/common"
 )
 
+// Overlap describes the overlap of 2 Rects in a slice.
 type Overlap struct {
-	I1, I2 int // Indexes in boxes array of overlapping pair of boxes
+	I1, I2 int // Indexes of overlapping pairs of Rect's in Rect slice.
 }
 
 func (o Overlap) Equals(d Overlap) bool {
@@ -48,7 +49,15 @@ func BoxOverlap(boxes []Rect) []Overlap {
 		return false
 	})
 	common.Log.Debug("boxOverlap:\n\t events=%d %#v", len(events), events)
-	return generateOvelapList(boxes, events)
+	overlaps := generateOvelapList(boxes, events)
+	sort.Slice(overlaps, func(i, j int) bool {
+		oi, oj := overlaps[i], overlaps[j]
+		if oi.I1 != oj.I1 {
+			return oi.I1 < oj.I1
+		}
+		return oi.I2 < oj.I2
+	})
+	return overlaps
 }
 
 type oEvent struct {
@@ -84,32 +93,6 @@ func generateEvents(boxes []Rect) []oEvent {
 		len(boxes), boxes, len(leftEvents), leftEvents, len(rightEvents), rightEvents, len(events), events)
 	return events
 }
-
-// module.exports = function(boxes) {
-// 	// if (!isInputOk(boxes)) {return null;}
-// 	var events = generateEvents(boxes);
-// 	events.sort(compare);
-// 	overlaps = new Array();
-// 	var overlaps = generateOvelapList(boxes, events, overlaps);
-// 	return overlaps;
-// }
-
-/*
-[
-	[[0, 0], [1, 1]], 			//box 1
-	[[0.5, 0.5], [10, 10]]		//box 2
-]
-*/
-
-// func compare(a,b) {
-//   if (a.x < b.x)
-//      return -1;
-//   if (a.x > b.x)
-//     return 1;
-//   if (a.x == b.x && a.type == "add" && b.type == "remove") return -1;	// adding before removing allows for boxes that overlap
-//   if (a.x == b.x && a.type == "remove" && b.type == "add") return 1; 	// only on the edge to count as overlapping.
-//   return 0;
-// }
 
 func generateOvelapList(boxes []Rect, events []oEvent) []Overlap {
 	var Q []int            // a list of indices into the boxes array of boxes that intersect the sweeping plane

@@ -251,11 +251,3 @@ func (l liangBarsky) inside(a Point) bool {
 func (l liangBarsky) LineInside(line Line) bool {
 	return l.inside(line.A) && l.inside(line.B)
 }
-
-// isZero returns true if `x` is close to zero.
-func isZero(x float64) bool {
-	return math.Abs(x) < tol
-}
-
-// tol is the tolerance on all measurements.
-const tol = 0.000001 * 0.000001

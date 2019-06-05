@@ -9,7 +9,10 @@ import (
 )
 
 func init() {
-	common.SetLogger(common.NewConsoleLogger(common.LogLevelInfo))
+	level := common.LogLevelDebug
+	common.SetLogger(common.NewConsoleLogger(level))
+	common.Log.Info("level=%#v", level)
+	common.Log.Debug("level=%#v", level)
 }
 
 func TestDecomposition(t *testing.T) {
@@ -224,14 +227,16 @@ func bmp(t *testing.T, h, w int, img []float64, expected int) {
 		t.Fatalf("err=%v", err)
 	}
 
-	common.Log.Info("bmp: m=%s", m)
+	common.Log.Info("bmp: m=\n%s", m)
 	paths := clip.GetContours(m, false)
-	common.Log.Info("bmp: paths=%+v", paths)
+	common.Log.Info("bmp: paths=%d %v", len(paths), paths)
 	test(t, paths, false, expected)
-	panic("Done")
+	// panic("Done")
 }
 
 func test(t *testing.T, paths []clip.Path, clockwise bool, expected int) {
+	common.Log.Info("test: clockwise=%t expected=%d\n\tpaths= %d %v",
+		clockwise, expected, len(paths), paths)
 	// Check all 4 orientations
 	for sx := 1; sx >= -1; sx -= 2 {
 		for sy := 1; sy >= -1; sy -= 2 {
@@ -250,6 +255,8 @@ func test(t *testing.T, paths []clip.Path, clockwise bool, expected int) {
 			} else {
 				nclockwise = clockwise
 			}
+			common.Log.Info("test: clockwise=%t expected=%d\n\tpaths=%v\n\tsx=%d sy=%d nclockwise=%t",
+				clockwise, expected, paths, sx, sy, nclockwise)
 			verifyDecomp(t, npaths, nclockwise, expected)
 		}
 	}
@@ -259,9 +266,10 @@ func test(t *testing.T, paths []clip.Path, clockwise bool, expected int) {
 // `clockwise` is true if
 // `expected` is the expected number of overlaps.
 func verifyDecomp(t *testing.T, paths []clip.Path, ccw bool, expected int) {
-	clockwise := !ccw
+	clockwise := ccw
+	common.Log.Debug("verifyDecomp:===========================")
 	rectangles := clip.DecomposeRegion(paths, clockwise)
-	common.Log.Info("verifyDecomp:\n\t paths=%d %+v\n\t clockwise=%t expected=%d\n\t rectangles=%d %+v",
+	common.Log.Debug("verifyDecomp:\n\t paths=%d %+v\n\t clockwise=%t expected=%d\n\t rectangles=%d %+v",
 		len(paths), paths, clockwise, expected, len(rectangles), rectangles)
 
 	if len(rectangles) != expected {
@@ -294,15 +302,18 @@ func verifyDecomp(t *testing.T, paths []clip.Path, ccw bool, expected int) {
 
 	// Compute area for polygon and check each path is covered by an edge of
 	area := 0.0
-	for _, pathSet := range paths {
-		for j, a := range pathSet {
-			b := pathSet[(j+1)%len(pathSet)]
+	common.Log.Debug("verifyDecomp: contour areas. %d %v", len(paths), paths)
+	for i, contour := range paths {
+		common.Log.Debug("i=%d contour=%v", i, contour)
+		for j, a := range contour {
+			b := contour[(j+1)%len(contour)]
 			if a.Y == b.Y {
 				area += (b.X - a.X) * a.Y
 			}
+			common.Log.Debug("j=%d a=%v b=%v area=%.1f", j, a, b, area)
 		}
 	}
-	if !clockwise {
+	if clockwise {
 		area = -area
 	}
 
@@ -315,6 +326,9 @@ func verifyDecomp(t *testing.T, paths []clip.Path, ccw bool, expected int) {
 		}
 	}
 	if boxarea != area {
+		common.Log.Info("verifyDecomp:\n\t paths=%d %+v\n\t clockwise=%t expected=%d\n\t rectangles=%d %+v",
+			len(paths), paths, clockwise, expected, len(rectangles), rectangles)
+
 		t.Fatalf("box area wrong %g expected %g", boxarea, area)
 	}
 

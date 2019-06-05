@@ -29,13 +29,18 @@ type Vertex struct {
 
 // Segment is a vertical or horizontal segment.
 type Segment struct { // A chord?
-	x0, x1     float64 // start and end of the interval in the vertical or horizontal direction.
-	start, end *Vertex
-	vertical   bool // Is this a vertical segment?
-	number     int
+	x0, x1       float64 // Start and end of the interval in the vertical or horizontal direction.
+	start, end   *Vertex // Vertices at the start and end of the segment.
+	vertical     bool    // Is this a vertical segment?
+	number       int
+	iStart, iEnd int
 }
 
 func newSegment(start, end *Vertex, vertical bool) *Segment {
+	return newSegmentVertices(start, end, vertical, nil)
+}
+
+func newSegmentVertices(start, end *Vertex, vertical bool, vertices []*Vertex) *Segment {
 	var x0, x1 float64
 	if vertical { // Why vertical -> X  ? !@#$ Seems to be consistently inverted.
 		x0 = start.point.X
@@ -47,6 +52,7 @@ func newSegment(start, end *Vertex, vertical bool) *Segment {
 	if x0 > x1 {
 		x0, x1 = x1, x0
 	}
+
 	return &Segment{
 		x0:       x0,
 		x1:       x1,
@@ -54,7 +60,28 @@ func newSegment(start, end *Vertex, vertical bool) *Segment {
 		end:      end,
 		vertical: vertical,
 		number:   -1,
+		iStart:   vertexIndex(vertices, start),
+		iEnd:     vertexIndex(vertices, end),
 	}
+}
+
+func vertexIndex(vertices []*Vertex, vtx *Vertex) int {
+	if len(vertices) == 0 {
+		return -1
+	}
+	for i, v := range vertices {
+		if v == vtx {
+			return i
+		}
+	}
+	return -1
+}
+
+func integerizePoly(poly []Path) []Path {
+	for i, path := range poly {
+		poly[i] = path.integerize()
+	}
+	return poly
 }
 
 // DecomposeRegion breaks rectilinear polygon `paths` into non-overlapping rectangles.
@@ -66,13 +93,14 @@ func newSegment(start, end *Vertex, vertical bool) *Segment {
 // **Returns** A list of rectangles that decompose the region bounded by loops into the smallest
 //  number of non-overlapping rectangles
 func DecomposeRegion(paths []Path, clockwise bool) []Rect {
+	paths = integerizePoly(paths)
 	// clockwise = !clockwise
-
+	common.Log.Debug("DecomposeRegion:====================================-")
 	common.Log.Debug("DecomposeRegion: paths=%d clockwise=%t", len(paths), clockwise)
 	for i, path := range paths {
 		common.Log.Debug("\t%3d:%+v", i, path)
 	}
-	common.Log.Debug("====================================")
+	common.Log.Debug("DecomposeRegion:====================================+")
 
 	// First step: unpack all vertices into internal format.
 	var vertices []*Vertex
@@ -106,7 +134,7 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 				dir0 := prev.Y < cur.Y // c) d)
 				dir1 := cur.X < next.X // a) c)
 				concave = dir0 == dir1 // b) c) !@#$ Not concave for anti-clockwise
-				if clockwise {
+				if !clockwise {
 					concave = !concave
 				}
 				common.Log.Debug("  @1 dir0=%t dir1=%t concave=%t", dir0, dir1, concave)
@@ -117,7 +145,7 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 				dir0 := prev.X < cur.X
 				dir1 := cur.Y < next.Y
 				concave = dir0 != dir1
-				if clockwise {
+				if !clockwise {
 					concave = !concave
 				}
 				common.Log.Debug("  @2 dir0=%t dir1=%t concave=%t", dir0, dir1, concave)
@@ -193,15 +221,28 @@ func splitConcave(vertices []*Vertex) {
 		common.Log.Debug("\t%3d: %+v", i, v)
 		if v.next.point.Y == v.point.Y {
 			if v.next.point.X < v.point.X {
-				leftsegments = append(leftsegments, newSegment(v, v.next, true))
+				// <--
+				leftsegments = append(leftsegments, newSegmentVertices(v, v.next, true, vertices))
 			} else {
-				rightsegments = append(rightsegments, newSegment(v, v.next, true))
+				// -->
+				rightsegments = append(rightsegments, newSegmentVertices(v, v.next, true, vertices))
 			}
 		}
+	}
+	common.Log.Debug("splitConcave: leftsegments=%d", len(leftsegments))
+	for i, s := range leftsegments {
+		common.Log.Debug("\t%3d: %+v", i, *s)
+	}
+	common.Log.Debug("splitConcave: rightsegments=%d", len(rightsegments))
+	for i, s := range rightsegments {
+		common.Log.Debug("\t%3d: %+v", i, *s)
 	}
 
 	lefttree := createIntervalTree(leftsegments)
 	righttree := createIntervalTree(rightsegments)
+	common.Log.Debug("splitConcave: lefttree=%v", lefttree)
+	common.Log.Debug("splitConcave: righttree=%v", righttree)
+
 	for i, v := range vertices {
 		common.Log.Debug("i=%d v=%#v", i, v)
 		if !v.concave {
@@ -212,34 +253,46 @@ func splitConcave(vertices []*Vertex) {
 		y := v.point.Y
 		var direct bool
 		if v.prev.point.X == v.point.X {
+			// |                         ^
+			// |                         |
+			// v  direct = true          | direct = false
 			direct = v.prev.point.Y < y
 		} else {
+			//    ^                   ---+
+			//    |                      |
+			// ---+  direct = true       v  direct = false
 			direct = v.next.point.Y < y
 		}
-		direction := 1
-		if direct {
-			direction = -1
-		}
+
+		common.Log.Debug("queryPoint: direction=%t y=%g", direct, y)
 
 		// Scan a horizontal ray
+		var closestDistance float64
 		var closestSegment *Segment
-		closestDistance := infinity * float64(direction)
-		if direction < 0 {
+		if direct {
+			closestDistance = -infinity
 			queryPoint(righttree, v.point.X, func(h *Segment) bool {
 				x := h.start.point.Y
-				if closestDistance < x && x < y {
+				match := closestDistance < x && x < y
+				if match {
 					closestDistance = x
 					closestSegment = h
 				}
+				common.Log.Debug("x=%g h=%v match=%t closest=%g %v", x, *h, match, closestDistance,
+					*closestSegment)
 				return false
 			})
 		} else {
+			closestDistance = infinity
 			queryPoint(lefttree, v.point.X, func(h *Segment) bool {
 				x := h.start.point.Y
-				if y < x && x < closestDistance {
+				match := y < x && x < closestDistance
+				if match {
 					closestDistance = x
 					closestSegment = h
 				}
+				common.Log.Debug("x=%g h=%v match=%t closest=%g %v", x, *h, match, closestDistance,
+					*closestSegment)
 				return false
 			})
 		}
@@ -262,7 +315,7 @@ func splitConcave(vertices []*Vertex) {
 
 		// Update segment tree
 		var tree interval.Tree
-		if direction < 0 {
+		if direct {
 			tree = righttree
 		} else {
 			tree = lefttree
@@ -305,12 +358,6 @@ func splitConcave(vertices []*Vertex) {
 
 // type Diagonal struct{}
 // type Splitter struct{}
-
-// Stub
-func createIntervalTree(segments []*Segment) interval.Tree {
-	var tree interval.Tree
-	return tree
-}
 
 func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree interval.Tree) []*Segment {
 	var concave []*Vertex
@@ -834,25 +881,39 @@ func testSegment(v0, v1 *Vertex, tree interval.Tree, vertical bool) bool {
 	return len(matches) > 0
 }
 
-func treeDelete(tree interval.Tree, s *Segment) {
-	i := Interval{Segment: s}
-	tree.Delete(i, false)
+// Stub
+func createIntervalTree(segments []*Segment) interval.Tree {
+	common.Log.Debug("createIntervalTree: %d", len(segments))
+	var tree interval.Tree
+	for _, s := range segments {
+		tree = treeInsert(tree, s)
+	}
+	return tree
 }
 
-func treeInsert(tree interval.Tree, s *Segment) {
+func treeInsert(tree interval.Tree, s *Segment) interval.Tree {
 	i := Interval{Segment: s}
 	if err := tree.Insert(i, false); err != nil {
 		panic(err)
 	}
+	common.Log.Debug("treeInsert: %v %v", tree, *s)
+	return tree
+}
+
+func treeDelete(tree interval.Tree, s *Segment) interval.Tree {
+	i := Interval{Segment: s}
+	tree.Delete(i, false)
+	common.Log.Debug("treeDelete: %v %v", tree, *s)
+	return tree
 }
 
 func queryPoint(tree interval.Tree, x float64, cb func(s *Segment) bool) bool {
 	var matched bool
+	common.Log.Debug("queryPoint: x=%g", x)
 	ok := tree.Do(func(e interval.Interface) bool {
-		// s := e.(Int)
-		// matched = s == x
 		i := e.(Interval)
 		matched := cb(i.Segment)
+		common.Log.Debug(" -- i=%#v matched=%t", i, matched)
 		return matched
 	})
 	if matched != ok {

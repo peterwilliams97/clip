@@ -2,6 +2,7 @@ package clip
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/unidoc/unidoc/common"
@@ -36,6 +37,13 @@ func (p Point) isZero() bool {
 	return isZero(p.X) && isZero(p.Y)
 }
 
+func (p Point) integerize() Point {
+	return Point{
+		X: integerize(p.X),
+		Y: integerize(p.Y),
+	}
+}
+
 // Equals returns true if `p` and `d` are in the same location.
 func (p Point) Equals(d Point) bool {
 	return p.sub(d).isZero()
@@ -48,6 +56,13 @@ type Line struct {
 
 // Path is a path that is not necessarily closed.
 type Path []Point
+
+func (path Path) integerize() Path {
+	for i, p := range path {
+		path[i] = p.integerize()
+	}
+	return path
+}
 
 // Position returns the parametrized point.
 // p = a ∙ (1 - t) + b ∙ t = a + (b - a) ∙ t
@@ -105,7 +120,7 @@ func SliceToNDArray(h, w int, a []float64) (NDArray, error) {
 	for y := 0; y < h; y++ {
 		m[y] = backing[y*w : (y+1)*w]
 	}
-	common.Log.Debug("SliceToNDArray: m=%s", NDArray(m))
+	common.Log.Debug("SliceToNDArray: m=\n%s", NDArray(m))
 	return m, nil
 }
 
@@ -228,3 +243,27 @@ func (m NDArray) Sub(d NDArray) (NDArray, error) {
 	}
 	return t, nil
 }
+
+func integerize(x float64) float64 {
+	if math.Abs(x) < tol {
+		return 0
+	}
+	r := math.Round(x)
+	d := x - r
+	// common.Log.Error("%g = %g - %g", d, x, r)
+
+	if math.Abs(d) < tol {
+		// panic("1")
+		return r
+	}
+	return math.Round(x/tol0) * tol0
+}
+
+// isZero returns true if `x` is close to zero.
+func isZero(x float64) bool {
+	return math.Abs(x) < tol
+}
+
+// tol is the tolerance on all measurements.
+const tol = 0.000001 * 0.000001
+const tol0 = 0.0001

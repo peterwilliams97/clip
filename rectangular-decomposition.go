@@ -314,7 +314,7 @@ func splitConcave(vertices []*Vertex) {
 		closestSegment.end.prev = splitB
 
 		// Update segment tree
-		var tree interval.Tree
+		var tree *interval.Tree
 		if direct {
 			tree = righttree
 		} else {
@@ -359,7 +359,7 @@ func splitConcave(vertices []*Vertex) {
 // type Diagonal struct{}
 // type Splitter struct{}
 
-func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree interval.Tree) []*Segment {
+func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *interval.Tree) []*Segment {
 	var concave []*Vertex
 	for _, v := range vertices {
 		if v.concave {
@@ -721,20 +721,18 @@ func bipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	dist := make([]int, n)
 	for i := 0; i < n; i++ {
 		g1[i] = -1
-		adjN[i] = nil
+		// adjN[i] = nil
 		dist[i] = INF
 	}
 	adjM := make([][]int, m)
 	g2 := make([]int, m)
 	for i := 0; i < m; i++ {
 		g2[i] = -1
-		adjM[i] = nil
+		// adjM[i] = nil
 	}
 
 	// Build adjacency matrix
-	E := len(edges)
-	for i := 0; i < E; i++ {
-		e := edges[i]
+	for _, e := range edges {
 		adjN[e[0]] = append(adjN[e[0]], e[1])
 		adjM[e[1]] = append(adjM[e[1]], e[0])
 	}
@@ -875,39 +873,37 @@ func newInterval(v0, v1 *Vertex, vertical bool) Interval {
 	// }
 }
 
-func testSegment(v0, v1 *Vertex, tree interval.Tree, vertical bool) bool {
+func testSegment(v0, v1 *Vertex, tree *interval.Tree, vertical bool) bool {
 	i := newInterval(v0, v1, vertical)
 	matches := tree.Get(i)
 	return len(matches) > 0
 }
 
 // Stub
-func createIntervalTree(segments []*Segment) interval.Tree {
+func createIntervalTree(segments []*Segment) *interval.Tree {
 	common.Log.Debug("createIntervalTree: %d", len(segments))
-	var tree interval.Tree
+	tree := &interval.Tree{}
 	for _, s := range segments {
-		tree = treeInsert(tree, s)
+		treeInsert(tree, s)
 	}
 	return tree
 }
 
-func treeInsert(tree interval.Tree, s *Segment) interval.Tree {
+func treeInsert(tree *interval.Tree, s *Segment) {
 	i := Interval{Segment: s}
 	if err := tree.Insert(i, false); err != nil {
 		panic(err)
 	}
 	common.Log.Debug("treeInsert: %v %v", tree, *s)
-	return tree
 }
 
-func treeDelete(tree interval.Tree, s *Segment) interval.Tree {
+func treeDelete(tree *interval.Tree, s *Segment) {
 	i := Interval{Segment: s}
 	tree.Delete(i, false)
 	common.Log.Debug("treeDelete: %v %v", tree, *s)
-	return tree
 }
 
-func queryPoint(tree interval.Tree, x float64, cb func(s *Segment) bool) bool {
+func queryPoint(tree *interval.Tree, x float64, cb func(s *Segment) bool) bool {
 	var matched bool
 	common.Log.Debug("queryPoint: x=%g", x)
 	ok := tree.Do(func(e interval.Interface) bool {

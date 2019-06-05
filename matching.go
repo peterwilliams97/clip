@@ -151,24 +151,17 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 }
 
 // BipartiteMatching finds a maximum bipartite matching in an unweighted graph.
-//  The current implementation uses the Hopcroft-Karp algorithm and runs in O(sqrt(V) * E + V) time.
-// * `n` is the number of vertices in the first component
-// * `m` is the number of vertices in the second component
-// * `edges` is the list of edges, represented by pairs of integers between 0 and n-1,m-1 respectively.
-// **Returns** A list of edges representing the matching
+// The current implementation uses the Hopcroft-Karp algorithm and runs in O(sqrt(V) * E + V) time.
+// `n`: The number of vertices in the first component.
+// `m`:The number of vertices in the second component.
+// `edges`: The list of edges, represented by pairs of integers between 0 and n-1,m-1 respectively.
+// Returns: A list of edges representing the matching.
 // https://en.wikipedia.org/wiki/Matching_(graph_theory)
 // https://en.wikipedia.org/wiki/Hopcroft%E2%80%93Karp_algorithm#Pseudocode
 func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	common.Log.Debug("BipartiteMatching: n=%d m=%d\nedges=%d %v", n, m, len(edges), edges)
-	for _, e := range edges {
-		common.Log.Debug("n=%d m=%d e=%v", n, m, e)
-		if e[0] >= n {
-			panic("Bad e[0]")
-		}
-		if e[1] >= m {
-			panic("Bad e[1]")
-		}
-	}
+	validateEdges(n, m, edges)
+
 	// Initalize adjacency list, visit flag, distance.
 	adjN := make([][]int, n)
 	g1 := make([]int, n)
@@ -301,6 +294,41 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	}
 
 	return result
+}
+
+// validateEdges checks that `edges` is a valid set of edges over ranges `n` and `m`.
+func validateEdges(n, m int, edges [][2]int) {
+	for _, e := range edges {
+		common.Log.Debug("n=%d m=%d e=%v", n, m, e)
+		if e[0] >= n {
+			panic("Bad e[0]")
+		}
+		if e[1] >= m {
+			panic("Bad e[1]")
+		}
+	}
+	i0min, i1min := INF, INF
+	i0max, i1max := -INF, -INF
+	for _, e := range edges {
+		i0, i1 := e[0], e[1]
+		if i0 < i0min {
+			i0min = i0
+		}
+		if i0 > i0max {
+			i0max = i0
+		}
+		if i1 < i1min {
+			i1min = i1
+		}
+		if i1 > i1max {
+			i1max = i1
+		}
+	}
+	if i0min != 0 || i0max != n-1 || i1min != 0 || i1max != m-1 {
+		common.Log.Error("Invalid edges: n=%d (i0min=%d i0max=%d) m=%d (i1min=%d i1max=%d)",
+			n, i0min, i0max, m, i1min, i1max)
+		panic("bad edges")
+	}
 }
 
 // Generic intervals

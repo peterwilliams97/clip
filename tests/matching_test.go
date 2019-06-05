@@ -7,7 +7,10 @@ import (
 	"github.com/unidoc/unidoc/common"
 )
 
+var showAllMatches bool
+
 func init() {
+	showAllMatches = false
 	level := common.LogLevelInfo
 	common.SetLogger(common.NewConsoleLogger(level))
 	common.Log.Info("level=%#v", level)
@@ -15,7 +18,10 @@ func init() {
 }
 
 func TestMatching(t *testing.T) {
-	for _, test := range matchingCases {
+	for i, test := range matchingCases {
+		if showAllMatches {
+			common.Log.Info("test %d ===================", i)
+		}
 		test.run(t)
 	}
 }
@@ -32,6 +38,51 @@ var matchingCases = []matchingTest{
 		[2]int{0, 1},
 		[2]int{0, 2},
 	}, 1},
+	matchingTest{2, 2, [][2]int{
+		[2]int{0, 1},
+		[2]int{1, 0},
+	}, 2},
+	matchingTest{3, 3, [][2]int{
+		[2]int{2, 0},
+		[2]int{1, 1},
+		[2]int{0, 2},
+	}, 3},
+	matchingTest{3, 2, [][2]int{
+		[2]int{2, 0},
+		[2]int{1, 1},
+		[2]int{0, 0},
+	}, 2},
+	matchingTest{3, 3, [][2]int{
+		[2]int{2, 0},
+		[2]int{2, 2},
+		[2]int{1, 1},
+		[2]int{0, 0},
+	}, 3},
+	matchingTest{3, 3, [][2]int{
+		[2]int{0, 0},
+		[2]int{0, 1},
+		[2]int{0, 2},
+		[2]int{1, 1},
+		[2]int{2, 0},
+		[2]int{2, 2},
+	}, 3},
+	matchingTest{3, 3, [][2]int{
+		[2]int{0, 1},
+		[2]int{0, 2},
+		[2]int{1, 0},
+		[2]int{1, 2},
+		[2]int{2, 0},
+		[2]int{2, 1},
+	}, 3},
+	matchingTest{3, 3, [][2]int{
+		[2]int{0, 1},
+		[2]int{0, 2},
+		[2]int{1, 0},
+		[2]int{1, 2},
+		[2]int{2, 0},
+		[2]int{2, 1},
+		[2]int{2, 2},
+	}, 3},
 	matchingTest{5, 5, [][2]int{
 		[2]int{0, 0},
 		[2]int{0, 1},
@@ -70,18 +121,17 @@ func (test matchingTest) run(t *testing.T) {
 
 func verifyMatching(t *testing.T, n, m int, edges [][2]int, expectedCount int) {
 	matches := clip.BipartiteMatching(n, m, edges)
-	common.Log.Info("verifyMatching: n=%d m=%d edges=%d", n, m, len(edges))
-	for i, e := range edges {
-		var mark string
-		if containsEdge(matches, e) {
-			mark = "***"
+	if showAllMatches {
+		common.Log.Info("verifyMatching: n=%d m=%d edges=%d matches=%d", n, m, len(edges), len(matches))
+		for i, e := range edges {
+			var mark string
+			if containsEdge(matches, e) {
+				mark = "***"
+			}
+			common.Log.Info("%4d: %v %s", i, e, mark)
 		}
-		common.Log.Info("%4d: %v %s", i, e, mark)
 	}
-	common.Log.Info("verifyMatching:matches=%d", len(matches))
-	for i, e := range matches {
-		common.Log.Info("%4d: %v", i, e)
-	}
+
 	for i := 0; i < n; i++ {
 		count := 0
 		for _, v := range matches {

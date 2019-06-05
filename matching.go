@@ -55,12 +55,12 @@ func complement(list []int, n int) []int {
 //   respectively which are in the cover.
 // Internally, this implementation uses the Hopcroft-Karp algorithm and König's theorem to compute
 // the minimal vertex cover of a bipartite graph in O(sqrt(V) * E) time.
-// bipartiteMatching uses Hopscroft-Karp, this function uses König's theorem as in
+// BipartiteMatching uses Hopscroft-Karp, this function uses König's theorem as in
 //    http://tryalgo.org/en/matching/2016/08/05/konig/
 // https://en.wikipedia.org/wiki/Hopcroft%E2%80%93Karp_algorithm
 // https://en.wikipedia.org/wiki/K%C5%91nig%27s_theorem_(graph_theory)
 func bipartiteVertexCover(n, m int, edges [][2]int) ([]int, []int) {
-	match := bipartiteMatching(n, m, edges)
+	match := BipartiteMatching(n, m, edges)
 
 	// Initialize adjacency lists
 	adjL := make([][]int, n)
@@ -150,7 +150,7 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 	}
 }
 
-// bipartiteMatching finds a maximum bipartite matching in an unweighted graph.
+// BipartiteMatching finds a maximum bipartite matching in an unweighted graph.
 //  The current implementation uses the Hopcroft-Karp algorithm and runs in O(sqrt(V) * E + V) time.
 // * `n` is the number of vertices in the first component
 // * `m` is the number of vertices in the second component
@@ -158,7 +158,17 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 // **Returns** A list of edges representing the matching
 // https://en.wikipedia.org/wiki/Matching_(graph_theory)
 // https://en.wikipedia.org/wiki/Hopcroft%E2%80%93Karp_algorithm#Pseudocode
-func bipartiteMatching(n, m int, edges [][2]int) [][2]int {
+func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
+	common.Log.Debug("BipartiteMatching: n=%d m=%d\nedges=%d %v", n, m, len(edges), edges)
+	for _, e := range edges {
+		common.Log.Debug("n=%d m=%d e=%v", n, m, e)
+		if e[0] >= n {
+			panic("Bad e[0]")
+		}
+		if e[1] >= m {
+			panic("Bad e[1]")
+		}
+	}
 	// Initalize adjacency list, visit flag, distance.
 	adjN := make([][]int, n)
 	g1 := make([]int, n)
@@ -177,8 +187,17 @@ func bipartiteMatching(n, m int, edges [][2]int) [][2]int {
 
 	// Build adjacency matrix
 	for _, e := range edges {
+		common.Log.Debug("adjN=%d adjM=%d e=%v", len(adjN), len(adjM), e)
 		adjN[e[0]] = append(adjN[e[0]], e[1])
 		adjM[e[1]] = append(adjM[e[1]], e[0])
+	}
+	common.Log.Debug("adjN=%d", len(adjN))
+	for i, a := range adjN {
+		common.Log.Debug("%6d: %d %v", i, len(a), a)
+	}
+	common.Log.Debug("adjM=%d", len(adjM))
+	for i, a := range adjM {
+		common.Log.Debug("%6d: %d %v", i, len(a), a)
 	}
 
 	// Why isn't adjM used any more? !@#$

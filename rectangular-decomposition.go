@@ -4,7 +4,6 @@ import (
 	"math"
 	"sort"
 
-	"github.com/biogo/store/interval"
 	"github.com/unidoc/unidoc/common"
 )
 
@@ -182,8 +181,8 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 			}
 		}
 	}
-	htree := createIntervalTree(hsegments)
-	vtree := createIntervalTree(vsegments)
+	htree := CreateIntervalTree(hsegments)
+	vtree := CreateIntervalTree(vsegments)
 
 	// Find horizontal and vertical diagonals.
 	hdiagonals := getDiagonals(vertices, npaths, false, vtree)
@@ -235,8 +234,8 @@ func splitConcave(vertices []*Vertex) {
 		common.Log.Debug("\t%3d: %+v", i, *s)
 	}
 
-	lefttree := createIntervalTree(leftsegments)
-	righttree := createIntervalTree(rightsegments)
+	lefttree := CreateIntervalTree(leftsegments)
+	righttree := CreateIntervalTree(rightsegments)
 	common.Log.Debug("splitConcave: lefttree=%v", lefttree)
 	common.Log.Debug("splitConcave: righttree=%v", righttree)
 
@@ -268,7 +267,7 @@ func splitConcave(vertices []*Vertex) {
 		var closestSegment *Segment
 		if direct {
 			closestDistance = -infinity
-			queryPoint(righttree, v.point.X, func(h *Segment) bool {
+			righttree.QueryPoint(v.point.X, func(h *Segment) bool {
 				x := h.start.point.Y
 				match := closestDistance < x && x < y
 				if match {
@@ -281,7 +280,7 @@ func splitConcave(vertices []*Vertex) {
 			})
 		} else {
 			closestDistance = infinity
-			queryPoint(lefttree, v.point.X, func(h *Segment) bool {
+			lefttree.QueryPoint(v.point.X, func(h *Segment) bool {
 				x := h.start.point.Y
 				match := y < x && x < closestDistance
 				if match {
@@ -311,15 +310,15 @@ func splitConcave(vertices []*Vertex) {
 		closestSegment.end.prev = splitB
 
 		// Update segment tree
-		var tree *interval.Tree
+		var tree *IntervalTree
 		if direct {
 			tree = righttree
 		} else {
 			tree = lefttree
 		}
-		treeDelete(tree, closestSegment)
-		treeInsert(tree, newSegment(closestSegment.start, splitA, true))
-		treeInsert(tree, newSegment(splitB, closestSegment.end, true))
+		tree.Delete(closestSegment)
+		tree.Insert(newSegment(closestSegment.start, splitA, true))
+		tree.Insert(newSegment(splitB, closestSegment.end, true))
 
 		// Append vertices
 		vertices = append(vertices, splitA, splitB)
@@ -356,7 +355,7 @@ func splitConcave(vertices []*Vertex) {
 // type Diagonal struct{}
 // type Splitter struct{}
 
-func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *interval.Tree) []*Segment {
+func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *IntervalTree) []*Segment {
 	var concave []*Vertex
 	for _, v := range vertices {
 		if v.concave {
@@ -452,11 +451,11 @@ type Crossing struct {
 
 // Find all crossings between diagonals.
 func findCrossings(hdiagonals, vdiagonals []*Segment) []Crossing {
-	htree := createIntervalTree(hdiagonals)
+	htree := CreateIntervalTree(hdiagonals)
 	var crossings []Crossing
 	for _, v := range vdiagonals {
 		// x := v.start.point.X
-		queryPoint(htree, v.start.point.Y, func(h *Segment) bool {
+		htree.QueryPoint(v.start.point.Y, func(h *Segment) bool {
 			x := h.start.point.X
 			if v.x0 <= x && x <= v.x1 {
 				crossings = append(crossings, Crossing{h: h, v: v})

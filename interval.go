@@ -19,7 +19,6 @@ func (c Int) Compare(b interval.Comparable) int {
 		return 1
 	}
 	return -1
-
 }
 
 // Interval is an interval over points in either the horizontal or vertical direction.
@@ -30,44 +29,49 @@ type Interval struct {
 	// Payload interface{}
 }
 
+type IntervalTree interval.Tree
+
 func newInterval(v0, v1 *Vertex, vertical bool) Interval {
 	return Interval{Segment: newSegment(v0, v1, vertical)}
 }
 
-func testSegment(v0, v1 *Vertex, tree *interval.Tree, vertical bool) bool {
+func testSegment(v0, v1 *Vertex, tree *IntervalTree, vertical bool) bool {
 	i := newInterval(v0, v1, vertical)
-	matches := tree.Get(i)
+	t := (*interval.Tree)(tree)
+	matches := t.Get(i)
 	return len(matches) > 0
 }
 
-// Stub
-func createIntervalTree(segments []*Segment) *interval.Tree {
-	common.Log.Debug("createIntervalTree: %d", len(segments))
-	tree := &interval.Tree{}
+func CreateIntervalTree(segments []*Segment) *IntervalTree {
+	common.Log.Debug("CreateIntervalTree: %d", len(segments))
+	tree := &IntervalTree{}
 	for _, s := range segments {
-		treeInsert(tree, s)
+		tree.Insert(s)
 	}
 	return tree
 }
 
-func treeInsert(tree *interval.Tree, s *Segment) {
+func (tree *IntervalTree) Insert(s *Segment) {
 	i := Interval{Segment: s}
-	if err := tree.Insert(i, false); err != nil {
+	t := (*interval.Tree)(tree)
+	if err := t.Insert(i, false); err != nil {
 		panic(err)
 	}
 	common.Log.Debug("treeInsert: %v %v", tree, *s)
 }
 
-func treeDelete(tree *interval.Tree, s *Segment) {
+func (tree *IntervalTree) Delete(s *Segment) {
 	i := Interval{Segment: s}
-	tree.Delete(i, false)
+	t := (*interval.Tree)(tree)
+	t.Delete(i, false)
 	common.Log.Debug("treeDelete: %v %v", tree, *s)
 }
 
-func queryPoint(tree *interval.Tree, x float64, cb func(s *Segment) bool) bool {
+func (tree *IntervalTree) QueryPoint(x float64, cb func(s *Segment) bool) bool {
 	var matched bool
 	common.Log.Debug("queryPoint: x=%g", x)
-	ok := tree.Do(func(e interval.Interface) bool {
+	t := (*interval.Tree)(tree)
+	ok := t.Do(func(e interval.Interface) bool {
 		i := e.(Interval)
 		matched := cb(i.Segment)
 		common.Log.Debug(" -- i=%#v matched=%t", i, matched)

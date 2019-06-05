@@ -13,8 +13,6 @@ func init() {
 	showAllMatches = false
 	level := common.LogLevelInfo
 	common.SetLogger(common.NewConsoleLogger(level))
-	common.Log.Info("level=%#v", level)
-	common.Log.Debug("level=%#v", level)
 }
 
 func TestMatching(t *testing.T) {

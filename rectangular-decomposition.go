@@ -13,8 +13,6 @@ import (
 
 */
 
-const INF = 2 ^ 32
-
 // Vertex is a vertex on a rectilinear polygon.
 type Vertex struct {
 	point   Point

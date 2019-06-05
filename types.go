@@ -8,6 +8,13 @@ import (
 	"github.com/unidoc/unidoc/common"
 )
 
+const (
+	MaxUint = ^uint(0)
+	MinUint = 0
+	MaxInt  = int(MaxUint >> 1)
+	MinInt  = -MaxInt - 1
+)
+
 // Point is a 2-d point.
 type Point struct {
 	X, Y float64

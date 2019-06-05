@@ -160,6 +160,9 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 // https://en.wikipedia.org/wiki/Hopcroft%E2%80%93Karp_algorithm#Pseudocode
 func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	common.Log.Debug("BipartiteMatching: n=%d m=%d\nedges=%d %v", n, m, len(edges), edges)
+	if len(edges) == 0 {
+		return nil
+	}
 	validateEdges(n, m, edges)
 
 	// Initalize adjacency list, visit flag, distance.
@@ -169,7 +172,7 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	for i := 0; i < n; i++ {
 		g1[i] = -1
 		// adjN[i] = nil
-		dist[i] = INF
+		dist[i] = MaxInt
 	}
 	adjM := make([][]int, m)
 	g2 := make([]int, m)
@@ -194,7 +197,7 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	}
 
 	// Why isn't adjM used any more? !@#$
-	dmax := INF
+	dmax := MaxInt
 
 	// Depth-first search?
 	var dfs func(v int) bool
@@ -217,7 +220,7 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 				}
 			}
 		}
-		dist[v] = INF
+		dist[v] = MaxInt
 		return false
 	}
 
@@ -233,13 +236,13 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 				toVisit[count] = i
 				count++
 			} else {
-				dist[i] = INF
+				dist[i] = MaxInt
 			}
 		}
 
 		// Run BFS
 		ptr := 0
-		dmax = INF
+		dmax = MaxInt
 		for ptr < count {
 			v := toVisit[ptr]
 			ptr++
@@ -251,10 +254,10 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 					u := adj[j]
 					pu := g2[u]
 					if pu < 0 {
-						if dmax == INF {
+						if dmax == MaxInt {
 							dmax = dv + 1
 						}
-					} else if dist[pu] == INF {
+					} else if dist[pu] == MaxInt {
 						dist[pu] = dv + 1
 						toVisit[count] = pu
 						count++
@@ -264,7 +267,7 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 		}
 
 		// Check for termination
-		if dmax == INF {
+		if dmax == MaxInt {
 			break
 		}
 
@@ -307,8 +310,8 @@ func validateEdges(n, m int, edges [][2]int) {
 			panic("Bad e[1]")
 		}
 	}
-	i0min, i1min := INF, INF
-	i0max, i1max := -INF, -INF
+	i0min, i1min := MaxInt, MaxInt
+	i0max, i1max := MinInt, MinInt
 	for _, e := range edges {
 		i0, i1 := e[0], e[1]
 		if i0 < i0min {

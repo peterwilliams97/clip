@@ -23,6 +23,17 @@ type Vertex struct {
 	visited bool
 }
 
+func (v *Vertex) validate() {
+	if v.prev != nil && v.prev.point.Equals(v.point) {
+		common.Log.Error("\n\tprev=%#v\n\t   v=%#v\n\tnext=%#v", *v.prev, *v, *v.next)
+		panic("duplicate point: prev")
+	}
+	if v.next != nil && v.next.point.Equals(v.point) {
+		common.Log.Error("\n\tprev=%#v\n\t   v=%#v\n\tnext=%#v", *v.prev, *v, *v.next)
+		panic("duplicate point: next")
+	}
+}
+
 // Segment is a vertical or horizontal segment.
 type Segment struct { // A chord?
 	x0, x1       float64 // Start and end of the interval in the vertical or horizontal direction.
@@ -169,8 +180,9 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 
 	for _, p := range npaths {
 		for j := 0; j < len(p); j++ {
+			k := (j + 1) % len(p)
 			a := p[j]
-			b := p[(j+1)%len(p)]
+			b := p[k]
 			if a.point.X == b.point.X {
 				// hsegments are vertical !@#$
 				hsegments = append(hsegments, newSegment(a, b, false))
@@ -178,11 +190,20 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 				// vsegments are horizontal !@#$
 				vsegments = append(vsegments, newSegment(a, b, true))
 			}
+			// if clockwise {
+			// 	b.next = a
+			// } else {
+			// 	a.prev, a.next = a, b
+			// }
 			if clockwise {
-				b.next = a
+				a.prev, b.next = b, a
 			} else {
-				a.prev, a.next = a, b
+				a.next, b.prev = b, a
 			}
+			common.Log.Debug("clockwise=%t len(p)=%d\n\tp[%d]=%v\n\tp[%d]=%v",
+				clockwise, len(p), j, a, k, b)
+			a.validate()
+			b.validate()
 		}
 	}
 	htree := CreateIntervalTree(hsegments)
@@ -265,6 +286,8 @@ func splitConcave(vertices []*Vertex) {
 		}
 
 		common.Log.Debug("queryPoint: direction=%t y=%g", direct, y)
+		common.Log.Debug("prev=%v point=%v next=%v", v.prev.point, v.point, v.next.point)
+		v.validate()
 
 		// Scan a horizontal ray
 		var closestDistance float64
@@ -297,7 +320,7 @@ func splitConcave(vertices []*Vertex) {
 			})
 		}
 
-		common.Log.Debug("closestSegment=%#v\n", closestSegment)
+		common.Log.Debug("closestSegment=%#v closestDistance=%g\n", closestSegment, closestDistance)
 
 		// Create two splitting vertices
 		point := Point{v.point.X, closestDistance}
@@ -415,8 +438,11 @@ func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *I
 }
 
 func findSplitters(hdiagonals, vdiagonals []*Segment) []*Segment {
+	common.Log.Debug("findSplitters: hdiagonals=%d vdiagonals=%d", len(hdiagonals), len(vdiagonals))
+
 	// First find crossings
 	crossings := findCrossings(hdiagonals, vdiagonals)
+	common.Log.Debug("findSplitters: crossings=%d", len(crossings))
 
 	// Then tag and convert edge format
 	for i := 0; i < len(hdiagonals); i++ {

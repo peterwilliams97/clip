@@ -9,10 +9,11 @@ import (
 )
 
 const (
-	MaxUint = ^uint(0)
-	MinUint = 0
-	MaxInt  = int(MaxUint >> 1)
-	MinInt  = -MaxInt - 1
+	MaxUint  = ^uint(0)
+	MinUint  = 0
+	MaxInt   = int(MaxUint >> 1)
+	MinInt   = -MaxInt - 1
+	infinity = math.MaxFloat64
 )
 
 // Point is a 2-d point.

@@ -11,8 +11,6 @@ import (
 func init() {
 	level := common.LogLevelDebug
 	common.SetLogger(common.NewConsoleLogger(level))
-	common.Log.Info("level=%#v", level)
-	common.Log.Debug("level=%#v", level)
 }
 
 func TestDecomposition(t *testing.T) {

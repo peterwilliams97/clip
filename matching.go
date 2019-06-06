@@ -151,7 +151,7 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 // BipartiteMatching finds a maximum bipartite matching in an unweighted graph.
 // The current implementation uses the Hopcroft-Karp algorithm and runs in O(sqrt(V) * E + V) time.
 // `n`: The number of vertices in the first component.
-// `m`:The number of vertices in the second component.
+// `m`: The number of vertices in the second component.
 // `edges`: The list of edges, represented by pairs of integers between 0 and n-1,m-1 respectively.
 // Returns: A list of edges representing the matching.
 // https://en.wikipedia.org/wiki/Matching_(graph_theory)
@@ -159,6 +159,7 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	common.Log.Debug("BipartiteMatching: n=%d m=%d\nedges=%d %v", n, m, len(edges), edges)
 	if len(edges) == 0 {
+		panic("no edges")
 		return nil
 	}
 	validateEdges(n, m, edges)

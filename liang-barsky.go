@@ -2,7 +2,6 @@ package clip
 
 import (
 	"fmt"
-	"math"
 )
 
 // liangBarsky is a Liang-Barsky clipper.
@@ -93,8 +92,6 @@ func (i *tInterval) clipT(a, d float64) bool {
 	}
 	return true
 }
-
-const infinity = math.MaxFloat64
 
 // ClipPolygon returns `path` clipped to the `l` rectangular window,
 func (l liangBarsky) ClipPolygon(path []Point) []Point {

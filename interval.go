@@ -31,6 +31,15 @@ type Interval struct {
 
 type IntervalTree interval.Tree
 
+func NewIntv(x0, x1 float64) Interval {
+	s := Segment{x0: x0, x1: x1}
+	return Interval{Segment: &s}
+}
+
+func (i Interval) Range() (float64, float64) {
+	return i.x0, i.x1
+}
+
 func newInterval(v0, v1 *Vertex, vertical bool) Interval {
 	return Interval{Segment: newSegment(v0, v1, vertical)}
 }
@@ -55,9 +64,9 @@ func (tree *IntervalTree) Insert(s *Segment) {
 	i := Interval{Segment: s}
 	t := (*interval.Tree)(tree)
 	if err := t.Insert(i, false); err != nil {
-		panic(err)
+		panic(fmt.Errorf("IntervalTree.Insert s=%v err=%v", *s, err))
 	}
-	common.Log.Debug("treeInsert: %v %v", tree, *s)
+	// common.Log.Debug("treeInsert: %v %v", tree, *s)
 }
 
 func (tree *IntervalTree) Delete(s *Segment) {
@@ -69,38 +78,43 @@ func (tree *IntervalTree) Delete(s *Segment) {
 
 func (tree *IntervalTree) QueryPoint(x float64, cb func(s *Segment) bool) bool {
 	var matched bool
-	common.Log.Debug("queryPoint: x=%g", x)
+	// common.Log.Debug("queryPoint: x%g", x)
 	t := (*interval.Tree)(tree)
-	ok := t.Do(func(e interval.Interface) bool {
+	q := query1d(x)
+	ok := t.DoMatching(func(e interval.Interface) bool {
 		i := e.(Interval)
 		matched := cb(i.Segment)
-		common.Log.Debug(" -- i=%#v matched=%t", i, matched)
+		// common.Log.Debug(" -- i=%#v matched=%t", i, matched)
 		return matched
-	})
+	}, q)
 	if matched != ok {
-		panic("queryPoint")
+		panic("QueryPoint")
 	}
 	return matched
 }
 
-// function testSegment(a, b, tree, direction) {
-//   var ax = a.point[direction^1]
-//   var bx = b.point[direction^1]
-//   return !!tree.queryPoint(a.point[direction], function(s) {
-//     var x = s.start.point[direction^1]
-//     if(ax < x && x < bx) {
-//       return true
-//     }
-//     return false
-//   })
-// }
+type query1d float64
+
+func (q query1d) Overlap(b interval.Range) bool {
+	var x0, x1 float64
+	switch bc := b.(type) {
+	case Interval:
+		x0, x1 = bc.x0, bc.x1
+	case *Mutable:
+		x0, x1 = bc.x0, bc.x1
+	default:
+		panic("unknown type")
+	}
+	x := float64(q)
+
+	return x0 <= x && x < x1
+}
 
 func (i Interval) Overlap(b interval.Range) bool {
 	var x0, x1 float64
 	switch bc := b.(type) {
 	case Interval:
-		x0 = bc.x0
-		x1 = bc.x1
+		x0, x1 = bc.x0, bc.x1
 	case *Mutable:
 		x0, x1 = bc.x0, bc.x1
 	default:
@@ -115,8 +129,7 @@ func (i Interval) Start() interval.Comparable   { return Int(i.x0) }
 func (i Interval) End() interval.Comparable     { return Int(i.x1) }
 func (i Interval) NewMutable() interval.Mutable { return &Mutable{Segment: i.Segment, id: i.id} }
 func (i Interval) String() string {
-	return fmt.Sprintf("[%g,%g)#%d",
-		i.x0, i.x1, i.id)
+	return fmt.Sprintf("[%g,%g)#%d", i.x0, i.x1, i.id)
 }
 
 type Mutable struct {

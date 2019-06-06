@@ -32,6 +32,10 @@ type Segment struct { // A chord?
 	iStart, iEnd int
 }
 
+// func NewSeg(x0, x1 float64) *Segment {
+// 	return &Segment{x0: x0, x1: x1}
+// }
+
 func newSegment(start, end *Vertex, vertical bool) *Segment {
 	return newSegmentVertices(start, end, vertical, nil)
 }
@@ -275,7 +279,7 @@ func splitConcave(vertices []*Vertex) {
 					closestSegment = h
 				}
 				common.Log.Debug("x=%g h=%v match=%t closest=%g %v", x, *h, match, closestDistance,
-					*closestSegment)
+					closestSegment)
 				return false
 			})
 		} else {
@@ -288,7 +292,7 @@ func splitConcave(vertices []*Vertex) {
 					closestSegment = h
 				}
 				common.Log.Debug("x=%g h=%v match=%t closest=%g %v", x, *h, match, closestDistance,
-					*closestSegment)
+					closestSegment)
 				return false
 			})
 		}

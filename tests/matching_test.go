@@ -31,6 +31,7 @@ type matchingTest struct {
 }
 
 var matchingCases = []matchingTest{
+	matchingTest{0, 0, [][2]int{}, 0},
 	matchingTest{1, 3, [][2]int{
 		[2]int{0, 0},
 		[2]int{0, 1},

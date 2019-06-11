@@ -3,7 +3,7 @@ package clip
 import (
 	"sort"
 
-	"github.com/unidoc/unidoc/common"
+	"github.com/unidoc/unipdf/common"
 )
 
 // bipartiteIndependentSet computes a maximum independent set for a bipartite graph.
@@ -156,27 +156,38 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 // Returns: A list of edges representing the matching.
 // https://en.wikipedia.org/wiki/Matching_(graph_theory)
 // https://en.wikipedia.org/wiki/Hopcroft%E2%80%93Karp_algorithm#Pseudocode
+// https://en.wikipedia.org/wiki/Berge%27s_lemma
+// A maximal matching is a matching M of a graph G with the property that if any edge not in M is
+//    added to M, it is no longer a matching, that is, M is maximal if it is not a subset of any other
+//    matching in graph G. In other words, a matching M of a graph G is maximal if every edge in G has
+//    a non-empty intersection with at least one edge in M.
+// Given a matching M,
+//    an alternating path is a path that begins with an unmatched vertex and[2] whose edges belong
+//      alternately to the matching and not to the matching.
+//    an augmenting path is an alternating path that starts from and ends on free (unmatched) vertices.
+//    One can prove that a matching is maximum if and only if it does not have any augmenting path.
+//      (This result is sometimes called Berge's lemma.)
 func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	common.Log.Debug("BipartiteMatching: n=%d m=%d\nedges=%d %v", n, m, len(edges), edges)
 	if len(edges) == 0 {
-		panic("no edges")
+		// panic("no edges")
 		return nil
 	}
 	validateEdges(n, m, edges)
 
 	// Initalize adjacency list, visit flag, distance.
 	adjN := make([][]int, n)
-	g1 := make([]int, n)
+	gN := make([]int, n)
 	dist := make([]int, n)
 	for i := 0; i < n; i++ {
-		g1[i] = -1
+		gN[i] = -1
 		// adjN[i] = nil
 		dist[i] = MaxInt
 	}
 	adjM := make([][]int, m)
-	g2 := make([]int, m)
+	gM := make([]int, m)
 	for i := 0; i < m; i++ {
-		g2[i] = -1
+		gM[i] = -1
 		// adjM[i] = nil
 	}
 
@@ -198,23 +209,21 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	// Why isn't adjM used any more? !@#$
 	dmax := MaxInt
 
-	// Depth-first search?
+	// Depth-first search
 	var dfs func(v int) bool
 	dfs = func(v int) bool {
 		if v < 0 {
 			return true
 		}
-		adj := adjN[v]
-		for _, u := range adj {
-			pu := g2[u]
+		for _, u := range adjN[v] {
+			pu := gM[u]
 			dpu := dmax
 			if pu >= 0 {
 				dpu = dist[pu]
 			}
 			if dpu == dist[v]+1 {
 				if dfs(pu) {
-					g1[v] = u
-					g2[u] = v
+					gN[v], gM[u] = u, v
 					return true
 				}
 			}
@@ -230,7 +239,7 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 		// Initialize queue
 		count := 0
 		for i := 0; i < n; i++ {
-			if g1[i] < 0 {
+			if gN[i] < 0 {
 				dist[i] = 0
 				toVisit[count] = i
 				count++
@@ -240,8 +249,20 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 		}
 
 		// Run BFS
-		ptr := 0
+		// Let G = (A∪B, E) be a bipartite graph and let M be a matching of G. We want to find
+		// a maximum matching of G. Denote by A0,B0 the sets of M-unsaturated vertices in A,B
+		// respectively.
+		// First we will use breadth-first-search BFS to find the length k of a shortest path from
+		// B0 to A0. Simultaneosuly, we produce the sequence of disjoint layers
+		// B0 = L0, L1, ... Lk ⊆ A0 where
+		//    Li is the set of vertices at distance i from B0 for all 0 ≤ i < k, and
+		//    Lk is the subset of A0 which is at distance k from B0.
+		// To avoid multiple BFSs from each vertex in B0, we add a super-vertex β and draw edges
+		// from it to all vertices of B0. Start a BFS from β to get distance of β from A0. Subtract
+		// one to get length of shortest path from B0 to A0. This takes O(m) time.
 		dmax = MaxInt
+		// for ptr := 0;  ptr < count; ptr++ {
+		ptr := 0
 		for ptr < count {
 			v := toVisit[ptr]
 			ptr++
@@ -249,9 +270,10 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 			if dv < dmax {
 				adj := adjN[v]
 				l := len(adj)
+				// for _, u := range adjN[v]{
 				for j := 0; j < l; j++ {
 					u := adj[j]
-					pu := g2[u]
+					pu := gM[u]
 					if pu < 0 {
 						if dmax == MaxInt {
 							dmax = dv + 1
@@ -271,9 +293,9 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 		}
 
 		// Run DFS on each vertex in N
-		for i := 0; i < n; i++ {
-			if g1[i] < 0 {
-				if dfs(i) {
+		for v := 0; v < n; v++ {
+			if gN[v] < 0 {
+				if dfs(v) {
 					matching += 1
 				}
 			}
@@ -284,10 +306,10 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	count := 0
 	result := make([][2]int, matching)
 	for i := 0; i < n; i++ {
-		if g1[i] < 0 {
+		if gN[i] < 0 {
 			continue
 		}
-		result[count] = [2]int{i, g1[i]}
+		result[count] = [2]int{i, gN[i]}
 		count++
 	}
 

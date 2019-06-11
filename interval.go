@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/biogo/store/interval"
-	"github.com/unidoc/unidoc/common"
+	"github.com/unidoc/unipdf/common"
 )
 
 // Generic intervals
@@ -54,8 +54,9 @@ func testSegment(v0, v1 *Vertex, tree *IntervalTree, vertical bool) bool {
 func CreateIntervalTree(segments []*Segment) *IntervalTree {
 	common.Log.Debug("CreateIntervalTree: %d", len(segments))
 	tree := &IntervalTree{}
-	for _, s := range segments {
+	for i, s := range segments {
 		tree.Insert(s)
+		common.Log.Debug("-- %d: %v %v", i, s, tree)
 	}
 	return tree
 }
@@ -78,18 +79,19 @@ func (tree *IntervalTree) Delete(s *Segment) {
 
 func (tree *IntervalTree) QueryPoint(x float64, cb func(s *Segment) bool) bool {
 	var matched bool
-	// common.Log.Debug("queryPoint: x%g", x)
+	common.Log.Debug("QueryPoint: x=%g tree=%+v", x, tree)
 	t := (*interval.Tree)(tree)
 	q := query1d(x)
 	ok := t.DoMatching(func(e interval.Interface) bool {
-		i := e.(Interval)
-		matched := cb(i.Segment)
-		// common.Log.Debug(" -- i=%#v matched=%t", i, matched)
+		iv := e.(Interval)
+		matched := cb(iv.Segment)
+		common.Log.Debug(" iv=%#v matched=%t", *iv.Segment, matched)
 		return matched
 	}, q)
 	if matched != ok {
 		panic("QueryPoint")
 	}
+	common.Log.Debug("QueryPoint: matched=%t", matched)
 	return matched
 }
 

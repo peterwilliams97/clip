@@ -4,7 +4,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/unidoc/unidoc/common"
+	"github.com/unidoc/unipdf/common"
 )
 
 /*
@@ -285,7 +285,7 @@ func splitConcave(vertices []*Vertex) {
 			direct = v.next.point.Y < y
 		}
 
-		common.Log.Debug("queryPoint: direction=%t y=%g", direct, y)
+		common.Log.Debug("splitConcave: direction=%t y=%g", direct, y)
 		common.Log.Debug("prev=%v point=%v next=%v", v.prev.point, v.point, v.next.point)
 		v.validate()
 
@@ -296,12 +296,13 @@ func splitConcave(vertices []*Vertex) {
 			closestDistance = -infinity
 			righttree.QueryPoint(v.point.X, func(h *Segment) bool {
 				x := h.start.point.Y
+				common.Log.Debug("cb: closestDistance=%g x=%g y=%g", closestDistance, x, y)
 				match := closestDistance < x && x < y
 				if match {
 					closestDistance = x
 					closestSegment = h
 				}
-				common.Log.Debug("x=%g h=%v match=%t closest=%g %v", x, *h, match, closestDistance,
+				common.Log.Debug("cb: x=%g h=%v match=%t\n\tclosest=%g %v", x, *h, match, closestDistance,
 					closestSegment)
 				return false
 			})
@@ -309,12 +310,13 @@ func splitConcave(vertices []*Vertex) {
 			closestDistance = infinity
 			lefttree.QueryPoint(v.point.X, func(h *Segment) bool {
 				x := h.start.point.Y
+				common.Log.Debug("cb: y=%g x=%g closestDistance=%g ", y, x, closestDistance)
 				match := y < x && x < closestDistance
 				if match {
 					closestDistance = x
 					closestSegment = h
 				}
-				common.Log.Debug("x=%g h=%v match=%t closest=%g %v", x, *h, match, closestDistance,
+				common.Log.Debug("cb: x=%g h=%v match=%t\n\tclosest=%g %v", x, *h, match, closestDistance,
 					closestSegment)
 				return false
 			})
@@ -383,12 +385,16 @@ func splitConcave(vertices []*Vertex) {
 // type Splitter struct{}
 
 func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *IntervalTree) []*Segment {
+	common.Log.Debug("getDiagonals: vertices=%d vertical=%t", len(vertices), vertical)
+
 	var concave []*Vertex
 	for _, v := range vertices {
 		if v.concave {
 			concave = append(concave, v)
 		}
 	}
+	common.Log.Debug("concave=%d", len(concave))
+
 	if vertical {
 		sort.Slice(concave, func(i, j int) bool {
 			a, b := concave[i], concave[j]
@@ -434,6 +440,7 @@ func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *I
 			}
 		}
 	}
+	common.Log.Debug("diagonals=%d", len(diagonals))
 	return diagonals
 }
 

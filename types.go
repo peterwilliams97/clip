@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/unidoc/unidoc/common"
+	"github.com/unidoc/unipdf/common"
 )
 
 const (

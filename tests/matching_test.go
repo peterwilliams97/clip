@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/peterwilliams97/clip"
-	"github.com/unidoc/unidoc/common"
+	"github.com/unidoc/unipdf/common"
 )
 
 var showAllMatches bool

@@ -1,6 +1,8 @@
 package clip_test
 
 import (
+	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"testing"
@@ -14,77 +16,97 @@ func init() {
 	common.SetLogger(common.NewConsoleLogger(level))
 }
 
+// TestIntervals runs testPoint on some random intervals.
 func TestInterval(t *testing.T) {
-	// for _, test := range intervalCases {
-	// 	test.run(t)
-	// }
-	intervals := makeIntervals(100)
-	tree := createTree(intervals)
+	for m := 1; m <= 55; m++ {
+		for k := 1; k <= 5; k++ {
+			common.Log.Info("==============*****================")
 
-	points := []float64{-1, 1, float64(clip.MinInt), float64(clip.MaxInt)}
-	for i := 0; i < 100; i++ {
-		points = append(points, random())
-	}
-	for _, x := range points {
-		testPoint(t, tree, intervals, x)
+			points := []float64{1, -1, float64(clip.MinInt), float64(clip.MaxInt)}
+			common.Log.Info("m=%d k=%d: %d intervals %d points", m, k, k*m, len(points))
+
+			for j := 0; j < 10000; j++ {
+				intervals := makeIntervals(k * m)
+				validateIntervals(intervals)
+				tree := createTree(intervals)
+				validateIntervals(intervals)
+
+				// for i := 0; i < 1000; i++ {
+				// 	points = append(points, random())
+				// }
+				// for _, iv := range intervals {
+				// 	x0, x1 := iv.Range()
+				// 	points = append(points, x0, x1)
+				// }
+
+				for _, x := range points {
+					testPoint(t, tree, intervals, x)
+				}
+			}
+			common.Log.Info("PASS")
+
+		}
 	}
 }
 
-// type intervalTest struct {
-// 	segments []*clip.Segment
-// 	x        float64
-// 	count    int
-// }
+const r0 = -10.0
+const r1 = 10.0
+const fac = 1e5
 
-// var intervalCases = []intervalTest{
-// 	intervalTest{
-// 		segments: []*clip.Segment{clip.NewSeg(0, 100)},
-// 		x:       10,
-// 		count: 1,
-// 	},
-// }
+var randHistory = map[float64]struct{}{}
 
-// func (test intervalTest) run(t *testing.T) {
-// 	tree := clip.CreateIntervalTree(test.segments)
-// 	count := 0
-// 	incr := func() { count++ }
-// 	tree.QueryPoint(test.x, incr)
-// 	if count != test.count {
-// 		t.Fatalf("count=%d expected=%d", count, test.count)
-// 	}
-// }
-
-const R0 = 0.0
-const R1 = 10.0
-
+// random returns a random float64 in the range [r0..r1]
 func random() float64 {
-	return R0 + (R1-R0)*rand.Float64()
+	var x float64
+	for i := 0; i < 100; i++ {
+		x = r0 + (r1-r0)*rand.Float64()
+		x = math.Round(x*fac) / fac
+		if _, ok := randHistory[x]; !ok {
+			break
+		}
+	}
+	if _, ok := randHistory[x]; ok {
+		panic(fmt.Errorf("%g is a repeat", x))
+	}
+	randHistory[x] = struct{}{}
+	return x
 }
 
+// makeIntervals returns a slice of random intervals [x0, x1]:  r0 =< x0 <= x1 <= 2*r1
 func makeIntervals(n int) []clip.Interval {
 	var intervals []clip.Interval
 	for i := 0; i < n; i++ {
 		x0 := random()
-		x1 := x0 + random()
+		dx := random()
+		x1 := x0 + math.Abs(dx)
 		iv := clip.NewIntv(x0, x1)
 		intervals = append(intervals, iv)
 	}
+	validateIntervals(intervals)
 	return intervals
 }
 
+// createTree returns an IntervalTree for `intervals`.
 func createTree(intervals []clip.Interval) *clip.IntervalTree {
+	validateIntervals(intervals)
 	segments := make([]*clip.Segment, len(intervals))
 	for i, iv := range intervals {
 		segments[i] = iv.Segment
 	}
-	return clip.CreateIntervalTree(segments)
+	validateIntervals(intervals)
+	tree := clip.CreateIntervalTree(segments)
+	validateIntervals(intervals)
+	return tree
 }
 
+// testPoint checks that `p` is matched by the correct intervals in `tree`. `tree` must be
+// constructed from `intervals`.
 func testPoint(t *testing.T, tree *clip.IntervalTree, intervals []clip.Interval, p float64) {
+	validateIntervals(intervals)
 	var expected []clip.Interval
 	for _, v := range intervals {
 		x0, x1 := v.Range()
-		if x0 <= p && p <= x1 {
+		if x0 <= p && p < x1 {
 			expected = append(expected, v)
 		}
 	}
@@ -98,15 +120,27 @@ func testPoint(t *testing.T, tree *clip.IntervalTree, intervals []clip.Interval,
 	sortIntervals(actual)
 
 	if !sameIntervals(expected, actual) {
+		sortIntervals(intervals)
 		common.Log.Error("===============================")
+		a0, a1 := 0.0, 0.0
+		for i, iv := range intervals {
+			x0, x1 := iv.Range()
+			common.Log.Error("%3d: %v (%+g %+g)", i, iv, x0-a0, x1-a1)
+			a0, a1 = x0, x1
+		}
+		common.Log.Error("p=%g", p)
+
+		showDifference(expected, actual)
 		t.Fatalf("QueryPoint:\n\texpected=%d %v\n\tactual=%d %v",
 			len(expected), expected, len(actual), actual)
 	}
 }
 
+// sortIntervals sorts `intervals` by their lower then their bounds in ascending order.
 func sortIntervals(intervals []clip.Interval) {
+	validateIntervals(intervals)
 	sort.Slice(intervals, func(i, j int) bool {
-		a, b := (intervals)[i], (intervals)[j]
+		a, b := intervals[i], intervals[j]
 		a0, a1 := a.Range()
 		b0, b1 := b.Range()
 		if a0 != b0 {
@@ -114,8 +148,32 @@ func sortIntervals(intervals []clip.Interval) {
 		}
 		return a1 < b1
 	})
+	validateIntervals(intervals)
 }
 
+func validateIntervals(intervals []clip.Interval) {
+	clip.ValidateIntervals(intervals)
+	// x0Counts := map[float64]int{}
+	// x1Counts := map[float64]int{}
+	// facX := fac * 100.0
+	// for i, iv := range intervals {
+	// x0, x1 := iv.Range()
+	// x0 = math.Round(x0*facX) / facX
+	// x1 = math.Round(x1*facX) / facX
+	// x0Counts[x0]++
+	// x1Counts[x1]++
+	// if x0Counts[x0] > 1 || x1Counts[x1] > 1 {
+	// 	common.Log.Error("-----------------------------")
+	// 	for j, jv := range intervals[:i+1] {
+	// 		common.Log.Error("%4d: %v", j, jv)
+	// 	}
+
+	// 	panic(fmt.Errorf("Duplicate interval i=%d iv=%v", i, iv))
+	// }
+	// }
+}
+
+// sameIntervals returns true if `intervals0` and `intervals1` are the same.
 func sameIntervals(intervals0, intervals1 []clip.Interval) bool {
 	if len(intervals0) != len(intervals1) {
 		return false
@@ -129,6 +187,33 @@ func sameIntervals(intervals0, intervals1 []clip.Interval) bool {
 		}
 	}
 	return true
+}
+
+func showDifference(intervals0, intervals1 []clip.Interval) {
+	n := len(intervals0)
+	if len(intervals1) > n {
+		n = len(intervals1)
+	}
+	for i := 0; i < n; i++ {
+		iv0, iv1 := clip.Interval{}, clip.Interval{}
+
+		if i < len(intervals0) {
+			iv0 = intervals0[i]
+		}
+		if i < len(intervals1) {
+			iv1 = intervals1[i]
+		}
+		marker := "***"
+		if i < len(intervals0) && i < len(intervals1) {
+			a0, a1 := iv0.Range()
+			b0, b1 := iv1.Range()
+			if a0 == b0 && a1 == b1 {
+				marker = ""
+			}
+		}
+
+		common.Log.Info("%3d: %v %v %s", i, iv0, iv1, marker)
+	}
 }
 
 // tape('fuzz test', function(t) {

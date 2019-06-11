@@ -24,6 +24,11 @@ func TestMatching(t *testing.T) {
 	}
 }
 
+// matchingTest is a bipartite matching on a bipartite graph.
+// The graph has `n` vertices on the first side and `m` vertices on the second size.
+// `edges`[i] is the ith edge. edges[i][0] (edges[i][10]) is an index into the first (second) side
+// vertices.
+// `count` is the expected number of edges in the matching.
 type matchingTest struct {
 	n, m  int
 	edges [][2]int

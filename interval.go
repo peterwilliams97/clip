@@ -2,6 +2,7 @@ package clip
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/biogo/store/interval"
 	"github.com/unidoc/unipdf/common"
@@ -58,22 +59,63 @@ func CreateIntervalTree(segments []*Segment) *IntervalTree {
 		tree.Insert(s)
 		common.Log.Debug("-- %d: %v %v", i, s, tree)
 	}
+	tree.Validate()
 	return tree
 }
 
+func (tree *IntervalTree) getIntervals() []Interval {
+	var intervals []Interval
+	t := (*interval.Tree)(tree)
+	t.Do(func(e interval.Interface) bool {
+		iv := e.(Interval)
+		intervals = append(intervals, iv)
+		return false
+	})
+	return intervals
+}
+
+func (tree *IntervalTree) Validate() {
+	intervals := tree.getIntervals()
+	ValidateIntervals(intervals)
+}
+
+func ValidateIntervals(intervals []Interval) {
+	x0Counts := map[float64]int{}
+	x1Counts := map[float64]int{}
+	facX := 1e8
+	for i, iv := range intervals {
+		x0, x1 := iv.Range()
+		x0 = math.Round(x0*facX) / facX
+		x1 = math.Round(x1*facX) / facX
+		x0Counts[x0]++
+		x1Counts[x1]++
+		if x0Counts[x0] > 1 || x1Counts[x1] > 1 {
+			common.Log.Error("-------------&&&---------------")
+			for j, jv := range intervals[:i+1] {
+				common.Log.Error("%4d: %s", j, jv)
+			}
+			// panic(fmt.Errorf("Duplicate interval i=%d iv=%v", i, iv))
+		}
+	}
+}
+
 func (tree *IntervalTree) Insert(s *Segment) {
+	tree.Validate()
 	i := Interval{Segment: s}
 	t := (*interval.Tree)(tree)
-	if err := t.Insert(i, false); err != nil {
+	d := *s
+	if err := t.Insert(i, true); err != nil {
 		panic(fmt.Errorf("IntervalTree.Insert s=%v err=%v", *s, err))
 	}
+	common.Log.Info("Insert: s=%v->%v i=%v", d, *s, i)
+	tree.Validate()
 	// common.Log.Debug("treeInsert: %v %v", tree, *s)
 }
 
 func (tree *IntervalTree) Delete(s *Segment) {
 	i := Interval{Segment: s}
 	t := (*interval.Tree)(tree)
-	t.Delete(i, false)
+	t.Delete(i, true)
 	common.Log.Debug("treeDelete: %v %v", tree, *s)
 }
 
@@ -131,7 +173,11 @@ func (i Interval) Start() interval.Comparable   { return Int(i.x0) }
 func (i Interval) End() interval.Comparable     { return Int(i.x1) }
 func (i Interval) NewMutable() interval.Mutable { return &Mutable{Segment: i.Segment, id: i.id} }
 func (i Interval) String() string {
-	return fmt.Sprintf("[%g,%g)#%d", i.x0, i.x1, i.id)
+	seg := "   (nil)    "
+	if i.Segment != nil {
+		seg = fmt.Sprintf("%p[%g,%g)", i.Segment, i.x0, i.x1)
+	}
+	return fmt.Sprintf("%15s#%d", seg, i.id)
 }
 
 type Mutable struct {
@@ -139,10 +185,20 @@ type Mutable struct {
 	id uintptr
 }
 
-func (m *Mutable) Start() interval.Comparable     { return Int(m.x0) }
-func (m *Mutable) End() interval.Comparable       { return Int(m.x1) }
-func (m *Mutable) SetStart(c interval.Comparable) { m.x0 = float64(c.(Int)) }
-func (m *Mutable) SetEnd(c interval.Comparable)   { m.x1 = float64(c.(Int)) }
+func (m *Mutable) Start() interval.Comparable { return Int(m.x0) }
+func (m *Mutable) End() interval.Comparable   { return Int(m.x1) }
+func (m *Mutable) SetStart(c interval.Comparable) {
+	common.Log.Info("Mutable.SetStart %g->%g", m.x0, float64(c.(Int)))
+	if isZero(m.x0+3.55642) && isZero(float64(c.(Int))+8.3346) {
+		panic("SetStart")
+	}
+	m.x0 = float64(c.(Int))
+
+}
+func (m *Mutable) SetEnd(c interval.Comparable) {
+	common.Log.Info("Mutable.SetEnd %g->%g", m.x1, float64(c.(Int)))
+	m.x1 = float64(c.(Int))
+}
 
 // func (t *interval.Tree) queryPoint(x float64, f func(h *Segment)) {
 // }

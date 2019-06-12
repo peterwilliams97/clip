@@ -269,6 +269,7 @@ func integerize(x float64) float64 {
 
 // isZero returns true if `x` is close to zero.
 func isZero(x float64) bool {
+	return x == 0.0
 	return math.Abs(x) < tol
 }
 

@@ -88,11 +88,22 @@ func vertexIndex(vertices []*Vertex, vtx *Vertex) int {
 	return -1
 }
 
+// !@#$
 func integerizePoly(poly []Path) []Path {
 	for i, path := range poly {
 		poly[i] = path.integerize()
 	}
 	return poly
+}
+
+func getDirection(x0, x1 float64) string {
+	if x0 < x1 {
+		return "<"
+	}
+	if x0 > x1 {
+		return ">"
+	}
+	return "="
 }
 
 // DecomposeRegion breaks rectilinear polygon `paths` into non-overlapping rectangles.
@@ -106,12 +117,12 @@ func integerizePoly(poly []Path) []Path {
 func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 	paths = integerizePoly(paths)
 	// clockwise = !clockwise
-	common.Log.Debug("DecomposeRegion:====================================-")
-	common.Log.Debug("DecomposeRegion: paths=%d clockwise=%t", len(paths), clockwise)
+	common.Log.Info("DecomposeRegion:====================================-")
+	common.Log.Info("DecomposeRegion: paths=%d clockwise=%t", len(paths), clockwise)
 	for i, path := range paths {
-		common.Log.Debug("\t%3d:%+v", i, path)
+		common.Log.Info("\t%3d:%+v", i, path)
 	}
-	common.Log.Debug("DecomposeRegion:====================================+")
+	common.Log.Info("DecomposeRegion:====================================+")
 
 	// First step: unpack all vertices into internal format.
 	var vertices []*Vertex
@@ -206,8 +217,8 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 			b.validate()
 		}
 	}
-	htree := CreateIntervalTree(hsegments)
-	vtree := CreateIntervalTree(vsegments)
+	htree := CreateIntervalTree(hsegments, "hsegments")
+	vtree := CreateIntervalTree(vsegments, "vsegments")
 
 	// Find horizontal and vertical diagonals.
 	hdiagonals := getDiagonals(vertices, npaths, false, vtree)
@@ -229,11 +240,11 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 }
 
 func splitConcave(vertices []*Vertex) {
-	common.Log.Debug("splitConcave: vertices=%d", len(vertices))
+	common.Log.Info("splitConcave: vertices=%d", len(vertices))
 	for i, v := range vertices {
-		common.Log.Debug("\t%3d: %+v", i, v)
+		common.Log.Info("\t%3d: %+v %p", i, v, v)
 	}
-	common.Log.Debug("=============================")
+	common.Log.Info("=============================")
 	// First step: build segment tree from vertical segments.
 	var leftsegments []*Segment
 	var rightsegments []*Segment
@@ -250,59 +261,89 @@ func splitConcave(vertices []*Vertex) {
 			}
 		}
 	}
-	common.Log.Debug("splitConcave: leftsegments=%d", len(leftsegments))
+	common.Log.Info("splitConcave: leftsegments=%d", len(leftsegments))
 	for i, s := range leftsegments {
-		common.Log.Debug("\t%3d: %+v", i, *s)
+		common.Log.Info("\t%3d: %+v", i, *s)
 	}
-	common.Log.Debug("splitConcave: rightsegments=%d", len(rightsegments))
+	common.Log.Info("splitConcave: rightsegments=%d", len(rightsegments))
 	for i, s := range rightsegments {
-		common.Log.Debug("\t%3d: %+v", i, *s)
+		common.Log.Info("\t%3d: %+v", i, *s)
 	}
 
-	lefttree := CreateIntervalTree(leftsegments)
-	righttree := CreateIntervalTree(rightsegments)
+	lefttree := CreateIntervalTree(leftsegments, "leftsegments")
+	righttree := CreateIntervalTree(rightsegments, "rightsegments")
 	common.Log.Debug("splitConcave: lefttree=%v", lefttree)
 	common.Log.Debug("splitConcave: righttree=%v", righttree)
 
 	for i, v := range vertices {
-		common.Log.Debug("i=%d v=%#v", i, v)
 		if !v.concave {
 			continue
 		}
+		common.Log.Info("@@i=%d v=%#v", i, v)
+
+		//    Concave corners
+		//    ===============
+		//         ^          ^      >--+      +---<
+		//     a)  |     b)   |    c)   |   d) |
+		//         +--<       >--+      v      v
+
+		//         v          v      <--+      +--->
+		//     e)  |     f)   |    g)   |   h) |
+		//         +-->    <--+         ^      ^
+
+		//     anti-clockwise  a),c),f),h)
+		//     ---------------------------
+		//          +-<-+              +--<---+    +------+
+		//         f|   |a             |      |    |      |
+		//      +---+   +---+          |      |a  f|      |
+		//      |           |          +---+  +----+  +---+
+		//      +---+   +---+             c|          |h
+		//         c|   |h                f|          |a
+		//          +->-+              +---+  +----+  +---+
+		//                             |      |h  c|      |
+		//                             |      |    |      |
+		//                             +-->---+    +------+
+
+		//     clockwise  b),d),e),g)
+		//     ---------------------
+		//          +->-+
+		//         b|   |e
+		//      +---+   +---+
+		//      |           |
+		//      +---+   +---+
+		//         g|   |d
+		//          +-<-+
 
 		// Compute orientation
 		y := v.point.Y
-		var direct bool
-		if v.prev.point.X == v.point.X {
-			// |                         ^
-			// |                         |
-			// v  direct = true          | direct = false
-			direct = v.prev.point.Y < y
-		} else {
-			//    ^                   ---+
-			//    |                      |
-			// ---+  direct = true       v  direct = false
-			direct = v.next.point.Y < y
+		var toRight bool                 // a),b),e),f)
+		if v.prev.point.X == v.point.X { // cases e)-h)
+			toRight = v.prev.point.Y < y // e),f)
+		} else { //                         cases a)-d)
+			toRight = v.next.point.Y < y // a), b)
 		}
+		common.Log.Info("splitConcave: i=%d toRight=%t y=%g", i, toRight, y)
+		common.Log.Info("prev=%v point=%v next=%v", v.prev.point, v.point, v.next.point)
+		common.Log.Info("X:prev->point: %s", getDirection(v.prev.point.X, v.point.X))
+		common.Log.Info("Y:prev->point: %s", getDirection(v.prev.point.Y, v.point.Y))
+		common.Log.Info("Y:next->point: %s", getDirection(v.next.point.Y, v.point.Y))
 
-		common.Log.Debug("splitConcave: direction=%t y=%g", direct, y)
-		common.Log.Debug("prev=%v point=%v next=%v", v.prev.point, v.point, v.next.point)
 		v.validate()
 
 		// Scan a horizontal ray
 		var closestDistance float64
 		var closestSegment *Segment
-		if direct {
+		if !toRight {
 			closestDistance = -infinity
 			righttree.QueryPoint(v.point.X, func(h *Segment) bool {
 				x := h.start.point.Y
-				common.Log.Debug("cb: closestDistance=%g x=%g y=%g", closestDistance, x, y)
+				common.Log.Info("cb: closestDistance=%g x=%g y=%g h=%+v", closestDistance, x, y, h)
 				match := closestDistance < x && x < y
 				if match {
 					closestDistance = x
 					closestSegment = h
 				}
-				common.Log.Debug("cb: x=%g h=%v match=%t\n\tclosest=%g %v", x, *h, match, closestDistance,
+				common.Log.Info("cb: match=%t closest=%g %v", match, closestDistance,
 					closestSegment)
 				return false
 			})
@@ -322,7 +363,7 @@ func splitConcave(vertices []*Vertex) {
 			})
 		}
 
-		common.Log.Debug("closestSegment=%#v closestDistance=%g\n", closestSegment, closestDistance)
+		common.Log.Info("closestSegment=%#v closestDistance=%g\n", closestSegment, closestDistance)
 
 		// Create two splitting vertices
 		point := Point{v.point.X, closestDistance}
@@ -488,7 +529,7 @@ type Crossing struct {
 
 // Find all crossings between diagonals.
 func findCrossings(hdiagonals, vdiagonals []*Segment) []Crossing {
-	htree := CreateIntervalTree(hdiagonals)
+	htree := CreateIntervalTree(hdiagonals, "hdiagonals")
 	var crossings []Crossing
 	for _, v := range vdiagonals {
 		// x := v.start.point.X

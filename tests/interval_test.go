@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	level := common.LogLevelDebug
+	level := common.LogLevelInfo
 	common.SetLogger(common.NewConsoleLogger(level))
 }
 

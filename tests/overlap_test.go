@@ -9,10 +9,6 @@ import (
 	"github.com/unidoc/unipdf/common"
 )
 
-func init() {
-	common.SetLogger(common.NewConsoleLogger(common.LogLevelInfo))
-}
-
 func TestOverlap(t *testing.T) {
 	for i, test := range overlapCases {
 		common.Log.Debug("test %d -----------------------------\n%s", i, test)

@@ -7,105 +7,6 @@ import (
 	"github.com/unidoc/unipdf/common"
 )
 
-/*
-	Coordinate origin is top-left
-
-*/
-
-// Vertex is a vertex on a rectilinear polygon.
-type Vertex struct {
-	point   Point
-	iPath   int     // Index of countour (path) in paths (polygon).
-	index   int     // Index of point in contour.
-	concave bool    // True if vertex is concave.
-	next    *Vertex // Next vertex in contour (or polygon?) !@#$
-	prev    *Vertex // Previous vertex in contour (or polygon?) !@#$
-	visited bool
-}
-
-func (v *Vertex) validate() {
-	if v.prev != nil && v.prev.point.Equals(v.point) {
-		common.Log.Error("\n\tprev=%#v\n\t   v=%#v\n\tnext=%#v", *v.prev, *v, *v.next)
-		panic("duplicate point: prev")
-	}
-	if v.next != nil && v.next.point.Equals(v.point) {
-		common.Log.Error("\n\tprev=%#v\n\t   v=%#v\n\tnext=%#v", *v.prev, *v, *v.next)
-		panic("duplicate point: next")
-	}
-}
-
-// Segment is a vertical or horizontal segment.
-type Segment struct { // A chord?
-	x0, x1       float64 // Start and end of the interval in the vertical or horizontal direction.
-	start, end   *Vertex // Vertices at the start and end of the segment.
-	vertical     bool    // Is this a vertical segment?
-	number       int
-	iStart, iEnd int
-}
-
-// func NewSeg(x0, x1 float64) *Segment {
-// 	return &Segment{x0: x0, x1: x1}
-// }
-
-func newSegment(start, end *Vertex, vertical bool) *Segment {
-	return newSegmentVertices(start, end, vertical, nil)
-}
-
-func newSegmentVertices(start, end *Vertex, vertical bool, vertices []*Vertex) *Segment {
-	var x0, x1 float64
-	if vertical { // Why vertical -> X  ? !@#$ Seems to be consistently inverted.
-		x0 = start.point.X
-		x1 = end.point.X
-	} else {
-		x0 = start.point.Y
-		x1 = end.point.Y
-	}
-	if x0 > x1 {
-		x0, x1 = x1, x0
-	}
-
-	return &Segment{
-		x0:       x0,
-		x1:       x1,
-		start:    start,
-		end:      end,
-		vertical: vertical,
-		number:   -1,
-		iStart:   vertexIndex(vertices, start),
-		iEnd:     vertexIndex(vertices, end),
-	}
-}
-
-func vertexIndex(vertices []*Vertex, vtx *Vertex) int {
-	if len(vertices) == 0 {
-		return -1
-	}
-	for i, v := range vertices {
-		if v == vtx {
-			return i
-		}
-	}
-	return -1
-}
-
-// !@#$
-func integerizePoly(poly []Path) []Path {
-	for i, path := range poly {
-		poly[i] = path.integerize()
-	}
-	return poly
-}
-
-func getDirection(x0, x1 float64) string {
-	if x0 < x1 {
-		return "<"
-	}
-	if x0 > x1 {
-		return ">"
-	}
-	return "="
-}
-
 // DecomposeRegion breaks rectilinear polygon `paths` into non-overlapping rectangles.
 // * `paths` is an array of loops vertices representing the boundary of the region.  Each loop must
 //    be a simple rectilinear polygon (ie no self intersections), and the line segments of any two
@@ -213,8 +114,8 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 			}
 			common.Log.Debug("clockwise=%t len(p)=%d\n\tp[%d]=%v\n\tp[%d]=%v",
 				clockwise, len(p), j, a, k, b)
-			a.validate()
-			b.validate()
+			a.Validate()
+			b.Validate()
 		}
 	}
 	htree := CreateIntervalTree(hsegments, "hsegments")
@@ -239,12 +140,49 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 	return findRegions(vertices)
 }
 
+//    Concave vertices
+//    ================
+//         ^          ^      >--+      +---<
+//     a)  |     b)   |    c)   |   d) |
+//         +--<    >--+         v      v
+//
+//         v          v      <--+      +--->
+//     e)  |     f)   |    g)   |   h) |
+//         +-->    <--+         ^      ^
+//
+//     anti-clockwise  a),c),f),h)
+//     ---------------------------
+//          +-<-+              +--<---+    +------+
+//         f|   |a             |      |    |      |
+//      +---+   +---+          |      |a  f|      |
+//      |           |          +---+  +----+  +---+
+//      +---+   +---+             c|          |h
+//         c|   |h                f|          |a
+//          +->-+              +---+  +----+  +---+
+//                             |      |h  c|      |
+//                             |      |    |      |
+//                             +-->---+    +------+
+//
+//     clockwise  b),d),e),g)
+//     ----------------------
+//          +->-+              +-->---+    +------+
+//         b|   |e             |      |    |      |
+//      +---+   +---+          |      |e  b|      |
+//      |           |          +---+  +----+  +---+
+//      +---+   +---+             g|          |d
+//         g|   |d                b|          |e
+//          +-<-+              +---+  +----+  +---+
+//                             |      |d  g|      |
+//                             |      |    |      |
+//                             +--<---+    +------+
+
 func splitConcave(vertices []*Vertex) {
 	common.Log.Info("splitConcave: vertices=%d", len(vertices))
 	for i, v := range vertices {
-		common.Log.Info("\t%3d: %+v %p", i, v, v)
+		common.Log.Info("\t%3d: % %p", i, v, v)
+		v.Validate()
 	}
-	common.Log.Info("=============================")
+	common.Log.Info("================^^^================")
 	// First step: build segment tree from vertical segments.
 	var leftsegments []*Segment
 	var rightsegments []*Segment
@@ -269,6 +207,7 @@ func splitConcave(vertices []*Vertex) {
 	for i, s := range rightsegments {
 		common.Log.Info("\t%3d: %+v", i, *s)
 	}
+	common.Log.Info("================~~~================")
 
 	lefttree := CreateIntervalTree(leftsegments, "leftsegments")
 	righttree := CreateIntervalTree(rightsegments, "rightsegments")
@@ -280,39 +219,6 @@ func splitConcave(vertices []*Vertex) {
 			continue
 		}
 		common.Log.Info("@@i=%d v=%#v", i, v)
-
-		//    Concave corners
-		//    ===============
-		//         ^          ^      >--+      +---<
-		//     a)  |     b)   |    c)   |   d) |
-		//         +--<       >--+      v      v
-
-		//         v          v      <--+      +--->
-		//     e)  |     f)   |    g)   |   h) |
-		//         +-->    <--+         ^      ^
-
-		//     anti-clockwise  a),c),f),h)
-		//     ---------------------------
-		//          +-<-+              +--<---+    +------+
-		//         f|   |a             |      |    |      |
-		//      +---+   +---+          |      |a  f|      |
-		//      |           |          +---+  +----+  +---+
-		//      +---+   +---+             c|          |h
-		//         c|   |h                f|          |a
-		//          +->-+              +---+  +----+  +---+
-		//                             |      |h  c|      |
-		//                             |      |    |      |
-		//                             +-->---+    +------+
-
-		//     clockwise  b),d),e),g)
-		//     ---------------------
-		//          +->-+
-		//         b|   |e
-		//      +---+   +---+
-		//      |           |
-		//      +---+   +---+
-		//         g|   |d
-		//          +-<-+
 
 		// Compute orientation
 		y := v.point.Y
@@ -328,7 +234,7 @@ func splitConcave(vertices []*Vertex) {
 		common.Log.Info("Y:prev->point: %s", getDirection(v.prev.point.Y, v.point.Y))
 		common.Log.Info("Y:next->point: %s", getDirection(v.next.point.Y, v.point.Y))
 
-		v.validate()
+		v.Validate()
 
 		// Scan a horizontal ray
 		var closestDistance float64
@@ -338,7 +244,7 @@ func splitConcave(vertices []*Vertex) {
 			righttree.QueryPoint(v.point.X, func(h *Segment) bool {
 				x := h.start.point.Y
 				common.Log.Info("cb: closestDistance=%g x=%g y=%g h=%+v", closestDistance, x, y, h)
-				match := closestDistance < x && x < y
+				match := x > closestDistance
 				if match {
 					closestDistance = x
 					closestSegment = h
@@ -352,7 +258,7 @@ func splitConcave(vertices []*Vertex) {
 			lefttree.QueryPoint(v.point.X, func(h *Segment) bool {
 				x := h.start.point.Y
 				common.Log.Debug("cb: y=%g x=%g closestDistance=%g ", y, x, closestDistance)
-				match := y < x && x < closestDistance
+				match := x < closestDistance
 				if match {
 					closestDistance = x
 					closestSegment = h
@@ -363,7 +269,11 @@ func splitConcave(vertices []*Vertex) {
 			})
 		}
 
-		common.Log.Info("closestSegment=%#v closestDistance=%g\n", closestSegment, closestDistance)
+		common.Log.Info("closestDistance=%g closestSegment=%+v", closestDistance, closestSegment)
+		common.Log.Info("closestSegment\n\tstart=%+v\n\t  end=%+v\n\t    v=%+v",
+			*closestSegment.start, *closestSegment.end, *v)
+
+		panic("Done")
 
 		// Create two splitting vertices
 		point := Point{v.point.X, closestDistance}
@@ -379,9 +289,14 @@ func splitConcave(vertices []*Vertex) {
 		splitB.next = closestSegment.end
 		closestSegment.end.prev = splitB
 
+		common.Log.Info("splitA=%+v", *splitA)
+		common.Log.Info("splitB=%+v", *splitB)
+		splitA.Validate()
+		splitB.Validate()
+
 		// Update segment tree
 		var tree *IntervalTree
-		if direct {
+		if toRight {
 			tree = righttree
 		} else {
 			tree = lefttree
@@ -430,6 +345,7 @@ func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *I
 
 	var concave []*Vertex
 	for _, v := range vertices {
+		v.Validate()
 		if v.concave {
 			concave = append(concave, v)
 		}
@@ -611,11 +527,25 @@ func splitSegment(segment *Segment) {
 
 func findRegions(vertices []*Vertex) []Rect {
 	n := len(vertices)
+	common.Log.Info("findRegions: %d vertices", len(vertices))
 	for i := 0; i < n; i++ {
 		vertices[i].visited = false
+		v := vertices[i]
+		common.Log.Info("%4d: %p %v %v %v", i, v, *v, v.prev.point, v.next.point)
 	}
+	for _, v := range vertices {
+		v.Validate()
+	}
+	common.Log.Info("~~~~~~~~~~~~~~~~~~~~~~~~~")
+	//   0  1  2  3
+	// 0 +--+  +--+
+	//   |  |  |  |
+	// 1 |  +--+  |
+	//   |        |
+	// 2 +--------+
 	// Walk over vertex list
 	var rectangles []Rect
+	var count int
 	for i := 0; i < n; i++ {
 		v := vertices[i]
 		if v.visited {
@@ -628,12 +558,15 @@ func findRegions(vertices []*Vertex) []Rect {
 			p := v.point
 			lo.X = math.Min(p.X, lo.X)
 			hi.X = math.Max(p.X, hi.X)
-			lo.Y = math.Min(p.Y, lo.X)
-			hi.Y = math.Max(p.Y, hi.X)
+			lo.Y = math.Min(p.Y, lo.Y)
+			hi.Y = math.Max(p.Y, hi.Y)
 			v.visited = true
+			common.Log.Info("visit %d %p %v %v %v", count, v, *v, lo, hi)
+			count++
 		}
 		r := Rect{Llx: lo.X, Lly: lo.Y, Urx: hi.X, Ury: hi.Y}
 		rectangles = append(rectangles, r)
+		common.Log.Info("%4d %d: %+v", i, len(rectangles)-1, r)
 	}
 	return rectangles
 }

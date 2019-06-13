@@ -8,9 +8,6 @@ import (
 	"github.com/peterwilliams97/clip"
 )
 
-func init() {
-	common.SetLogger(common.NewConsoleLogger(common.LogLevelInfo))
-}
 func TestContour(t *testing.T) {
 	for _, test := range contourTests {
 		testContour(t, test)

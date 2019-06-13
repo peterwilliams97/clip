@@ -7,9 +7,6 @@ import (
 	"github.com/unidoc/unipdf/common"
 )
 
-func init() {
-	common.SetLogger(common.NewConsoleLogger(common.LogLevelInfo))
-}
 func TestRect(t *testing.T) {
 	r := clip.Rect{Urx: 10, Ury: 20}
 	area := r.Area()

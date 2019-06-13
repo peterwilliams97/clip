@@ -40,8 +40,8 @@ type IntervalTree interval.Tree
 // NewIntv is a hack for testing.
 func NewIntv(x0, x1 float64) Interval {
 	s := Segment{x0: x0, x1: x1}
+	idCounter = (idCounter + 10) % 10
 	i := Interval{Segment: &s, id: idCounter}
-	idCounter++
 	return i
 }
 
@@ -51,7 +51,9 @@ func (i Interval) Range() (float64, float64) {
 }
 
 func newInterval(v0, v1 *Vertex, vertical bool) Interval {
-	return Interval{Segment: newSegment(v0, v1, vertical)}
+	s := newSegment(v0, v1, vertical)
+	idCounter++
+	return Interval{Segment: s, id: idCounter}
 }
 
 func testSegment(v0, v1 *Vertex, tree *IntervalTree, vertical bool) bool {
@@ -61,12 +63,19 @@ func testSegment(v0, v1 *Vertex, tree *IntervalTree, vertical bool) bool {
 	return len(matches) > 0
 }
 
-func CreateIntervalTree(segments []*Segment) *IntervalTree {
-	common.Log.Debug("CreateIntervalTree: %d", len(segments))
+func CreateIntervalTree(segments []*Segment, name string) *IntervalTree {
+	common.Log.Debug("CreateIntervalTree: %d %q", len(segments), name)
 	tree := &IntervalTree{}
 	for i, s := range segments {
 		tree.Insert(s)
-		common.Log.Debug("-- %d: %v %v", i, s, tree)
+		sStart, sEnd := "(nil)", "(nil)"
+		if s.start != nil {
+			sStart = fmt.Sprintf("%+g", s.start.point)
+		}
+		if s.end != nil {
+			sEnd = fmt.Sprintf("%+g", s.end.point)
+		}
+		common.Log.Debug("-- %d: %v=%s-%s tree=%v", i, s, sStart, sEnd, tree)
 	}
 	// This is critical!
 	t := (*interval.Tree)(tree)
@@ -114,8 +123,9 @@ func ValidateIntervals(intervals []Interval) {
 
 func (tree *IntervalTree) Insert(s *Segment) {
 	tree.Validate()
+	idCounter++                              // !@#$ Critical for passing tests
 	i := Interval{Segment: s, id: idCounter} // counter has effect
-	idCounter++                              // !@#$ Critical for passing testss
+
 	t := (*interval.Tree)(tree)
 	// d := *s
 	if err := t.Insert(i, true); err != nil {
@@ -123,14 +133,14 @@ func (tree *IntervalTree) Insert(s *Segment) {
 	}
 	// common.Log.Info("Insert: s=%v->%v i=%v", d, *s, i)
 	tree.Validate()
-	// common.Log.Debug("treeInsert: %v %v", tree, *s)
+	common.Log.Debug("treeInsert: %v s=%+v", tree, *s)
 }
 
 func (tree *IntervalTree) Delete(s *Segment) {
 	i := Interval{Segment: s}
 	t := (*interval.Tree)(tree)
 	t.Delete(i, true)
-	common.Log.Debug("treeDelete: %v %v", tree, *s)
+	common.Log.Debug("treeDelete: %v s=%+v", tree, *s)
 }
 
 func (tree *IntervalTree) QueryPoint(x float64, cb func(s *Segment) bool) bool {

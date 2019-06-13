@@ -10,11 +10,6 @@ import (
 	"github.com/unidoc/unipdf/common"
 )
 
-func init() {
-	level := common.LogLevelInfo
-	common.SetLogger(common.NewConsoleLogger(level))
-}
-
 func TestStartEndInterval(t *testing.T) {
 	randoo = newRando(1, 5)
 	for i := 0; i <= 50; i++ {
@@ -167,7 +162,7 @@ func createTree(intervals []clip.Interval) *clip.IntervalTree {
 		segments[i] = iv.Segment
 	}
 	validateIntervals(intervals)
-	tree := clip.CreateIntervalTree(segments)
+	tree := clip.CreateIntervalTree(segments, "interval_test")
 	validateIntervals(intervals)
 	return tree
 }

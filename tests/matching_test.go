@@ -11,8 +11,6 @@ var showAllMatches bool
 
 func init() {
 	showAllMatches = false
-	level := common.LogLevelInfo
-	common.SetLogger(common.NewConsoleLogger(level))
 }
 
 func TestMatching(t *testing.T) {

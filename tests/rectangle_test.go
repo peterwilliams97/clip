@@ -8,15 +8,20 @@ import (
 	"github.com/unidoc/unipdf/common"
 )
 
-func init() {
-	level := common.LogLevelDebug
-	common.SetLogger(common.NewConsoleLogger(level))
-}
-
 func TestDecomposition(t *testing.T) {
 
+	//   0  1
+	// 0 +--+
+	//   |  |
+	// 1 +--+
 	bmp(t, 1, 1, []float64{1}, 1)
 
+	//   0  1  2  3
+	// 0 +--+  +--+
+	//   |  |  |  |
+	// 1 |  +--+  |
+	//   |        |
+	// 2 +--------+
 	bmp(t, 2, 3, []float64{
 		1, 0, 1,
 		1, 1, 1,
@@ -265,9 +270,9 @@ func test(t *testing.T, paths []clip.Path, clockwise bool, expected int) {
 // `expected` is the expected number of overlaps.
 func verifyDecomp(t *testing.T, paths []clip.Path, ccw bool, expected int) {
 	clockwise := ccw
-	common.Log.Debug("verifyDecomp:===========================")
+	common.Log.Info("verifyDecomp:===========================")
 	rectangles := clip.DecomposeRegion(paths, clockwise)
-	common.Log.Debug("verifyDecomp:\n\t paths=%d %+v\n\t clockwise=%t expected=%d\n\t rectangles=%d %+v",
+	common.Log.Info("verifyDecomp:\n\t paths=%d %+v\n\t clockwise=%t expected=%d\n\t rectangles=%d %+v",
 		len(paths), paths, clockwise, expected, len(rectangles), rectangles)
 
 	if len(rectangles) != expected {

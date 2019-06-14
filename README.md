@@ -1,13 +1,10 @@
 # clip
-Clipping code
-
-[Rectangular Decomposition of Binary Images](http://library.utia.cas.cz/separaty/2012/ZOI/suk-rectangular%20decomposition%20of%20binary%20images.pdf)
-Having a binary object B (by a binary object we understand a set of all pixels of a binary image whose values equal one), we decompose it into K ≥ 1 blocks B<sub>1</sub>,B<sub>2</sub>,.., B<sub>K</sub> such that B<sub>i</sub> ∩ B<sub>j</sub> = ∅ for any i !≠ j and B = ∪<sub>k=1..B</sub>(B<sub>k</sub>) k=1..B
+Clipping code based on
 
 # [Minimal Rectangular Partitions of Digitized Blobs](https://kundoc.com/pdf-minimal-rectangular-partitions-of-digitized-blobs-.html)
-L. FERRAIU, P.V. SANKAR, AND J. SKLANSKY
-Department of Electrical Engineering, University of California, Irvine, California 92717
-Received March 25,1983; accepted February 15,1984
+_L. FERRAIU, P.V. SANKAR, AND J. SKLANSKY_
+_Department of Electrical Engineering, University of California, Irvine, California 92717_
+_Received March 25,1983; accepted February 15,1984_
 
 An algorithm is presented for partitioning a finite region of the digital plane into a minimum number of rectangular regions. It is demonstrated that the partition problem is equivalent to finding the maximum number of independent vertices in a bipartite graph. The graph’s matching properties are used to develop an algorithm that solves the independent vertex problem. The solution of this graph-theoretical problem leads to a solution of the partition problem.
 0 1984 by A&&c Press, Inc.
@@ -104,6 +101,81 @@ By Lemma 1 and Part I of this theorem, the number of rectangles, P, in ϕ is
       ≥ N - L’ + 1         L’ = number of nonintersecting chords between cogrid vertices
       ≥ N - L + 1          L = number of chords between cogrid vertices
 ∎
+
+Theorem 1 shows only the existence of a minimal order rectangular partition. In the remainder of
+this paper we show how to find an L set of chords which constitutes a _maximal set of nonintersecting
+chords_ as described in the theorem. Once this set of chords has been found, we use Lemma 1 to obtain
+the minimum order rectangular partition.
+
+We first reduce the problem of finding L nonintersecting chords to a graph theory problem.
+Define a graph G = (V, E) such that
+    1) Each v<sub>i</sub> ∈ V corresponds to cogrid chord, say i, of B.
+    2) Each edge v<sub>i</sub>, v<sub>j</sub> ∈ E corresponds to the intersection of i and j in B.
+
+Let G = (V, E) be a graph. See [6,7].
+
+DEFINITION 6. A set of vertices (edges) which covers all the edges (vertices) of G is called a
+    vertex cover (edge cover) for G.
+
+DEFINITION 7. The smallest number of vertices (edges) in any vertex (edge) cover for G is called a
+    vertex (edge) covering number and denoted by α0(G) (α1(G)).
+
+DEFINITION 8. A set of vertices (edges) in G is called independent if no two of its members are
+    adjacent.
+
+DEFINITION 9. The largest number of vertices (edges) in an independent set is called the vertex (edge)
+    independence number, β0 (β1).
+
+DEFINITION 10. A bipartite graph G is a graph whose vertex set V can be partitioned into two subsets
+    V1 and V2, such that every edge of G joins V1 with V2.
+
+THEOREM 2. (Gallai): For any nontrivial connected graph G, p = α0 + β0 = α1 + β1 where p = |V|.
+
+DEFINITION 11. A set of β1 independent edges in G is called a maximum matching of G.
+
+THEOREM 3. (König): If G is bipartite, then the number of edges in a maximum matching equals the
+    vertex covering number, that is β1 = α0 .
+
+## 6. THE GRAPH REDUCTION OF PROBLEM L CHORD
+
+In graph-theoretic terms, we are able to restate problem L Chord as follows:
+Graph Problem. For the graph G = (V, E) defined above, find the largest subset of independent nodes
+of G, i.e. the largest subset of chords containing no intersections. We note that in the
+rectangular partition, all chords are either horizontal or vertical. Consequently we have the
+following lemma.
+
+#### LEMMA 3. The graph G = (V,E) is a bipartite graph.
+
+![Graph Partition](partition.png) ![Rectangles](rectangles.png) Suppose we have a maximum matching on a bipartite graph
+G = ((U,V),E). Let the matching contain k edges (a _k_ matching).
+We observe the matching partitions the vertex sets U and V into sets U’, U”, V’, and V”,
+respectively such that U’ and V’ contain only matched vertices and U” and V” contain independent
+vertices (Fig. 4). Let (u<sub>i</sub>,v<sub>i</sub>) designate the ith pair of vertices in the matching.
+
+#### LEMMA 4. There does not exist any path from U” to V” that contains an edge (ui,v<sub>i</sub>).
+
+We now state Algorithm 1, which describes a procedure for finding the maximum independent set of vertices of a bipartite graph.
+
+## Algorithm 1. Find the maximum independent set of vertices for a bipartite graph.
+
+  Step 1 - Find the maximum matching for the bipartite graph G = ((U,V),E).
+
+  Step 2 - Color each pair of matched vertices (u<sub>i</sub>,v<sub>i</sub>) red. For each pair of red vertices do the
+    following:
+   (a) If there exists an edge from ui to V” in G, color ui green and v<sub>i</sub> blue or,
+       if there exists an edge from v<sub>i</sub> to U” in G, color v<sub>i</sub> green and ui blue.
+   (b) Recursively color each remaining red vertex connected in G to a blue vertex green, and
+       color its matched vertex blue.
+
+  Step 3 - For all remaining pairs of red colored vertices (u<sub>j</sub>,v<sub>j</sub>):
+  color u<sub>j</sub> blue and v<sub>j</sub> green if v<sub>j</sub> is connected to a green vertex.
+  Go to 2b.
+
+  Step 4 - For all remaining pairs of red vertices color u<sub>j</sub> green and v<sub>j</sub> blue.
+
+  Step 5 - Color all vertices u ∈ U” and all v ∈ V” blue. ∎
+
+## Polygon Examples
 
            +---+
            | 1 |
@@ -203,81 +275,12 @@ By Lemma 1 and Part I of this theorem, the number of rectangles, P, in ϕ is
        |   3   |
        +-------+
 
-Theorem 1 shows only the existence of a minimal order rectangular partition. In the remainder of
-this paper we show how to find an L set of chords which constitutes a _maximal set of nonintersecting
-chords_ as described in the theorem. Once this set of chords has been found, we use Lemma 1 to obtain
-the minimum order rectangular partition.
-
-We first reduce the problem of finding L nonintersecting chords to a graph theory problem.
-Define a graph G = (V, E) such that
-    1) Each v<sub>i</sub> ∈ V corresponds to cogrid chord, say i, of B.
-    2) Each edge v<sub>i</sub>, v<sub>j</sub> ∈ E corresponds to the intersection of i and j in B.
-
-Let G = (V, E) be a graph. See [6,7].
-
-DEFINITION 6. A set of vertices (edges) which covers all the edges (vertices) of G is called a
-    vertex cover (edge cover) for G.
-
-DEFINITION 7. The smallest number of vertices (edges) in any vertex (edge) cover for G is called a
-    vertex (edge) covering number and denoted by α0(G) (α1(G)).
-
-DEFINITION 8. A set of vertices (edges) in G is called independent if no two of its members are
-    adjacent.
-
-DEFINITION 9. The largest number of vertices (edges) in an independent set is called the vertex (edge)
-    independence number, β0 (β1).
-
-DEFINITION 10. A bipartite graph G is a graph whose vertex set V can be partitioned into two subsets
-    V1 and V2, such that every edge of G joins V1 with V2.
-
-THEOREM 2. (Gallai): For any nontrivial connected graph G, p = α0 + β0 = α1 + β1 where p = |V|.
-
-DEFINITION 11. A set of β1 independent edges in G is called a maximum matching of G.
-
-THEOREM 3. (König): If G is bipartite, then the number of edges in a maximum matching equals the
-    vertex covering number, that is β1 = α0 .
-
-## 6. THE GRAPH REDUCTION OF PROBLEM L CHORD
-
-In graph-theoretic terms, we are able to restate problem L Chord as follows:
-Graph Problem. For the graph G = (V, E) defined above, find the largest subset of independent nodes
-of G, i.e. the largest subset of chords containing no intersections. We note that in the
-rectangular partition, all chords are either horizontal or vertical. Consequently we have the
-following lemma.
-
-#### LEMMA 3. The graph G = (V,E) is a bipartite graph.
-
-![Graph Partition](partition.png) ![Rectangles](rectangles.png) Suppose we have a maximum matching on a bipartite graph
-G = ((U,V),E). Let the matching contain k edges (a _k_ matching).
-We observe the matching partitions the vertex sets U and V into sets U’, U”, V’, and V”,
-respectively such that U’ and V’ contain only matched vertices and U” and V” contain independent
-vertices (Fig. 4). Let (u<sub>i</sub>,v<sub>i</sub>) designate the ith pair of vertices in the matching.
-
-#### LEMMA 4. There does not exist any path from U” to V” that contains an edge (ui,v<sub>i</sub>).
-
-We now state Algorithm 1, which describes a procedure for finding the maximum independent set of vertices of a bipartite graph.
-
-## Algorithm 1. Find the maximum independent set of vertices for a bipartite graph.
-
-  Step 1 - Find the maximum matching for the bipartite graph G = ((U,V),E).
-
-  Step 2 - Color each pair of matched vertices (u<sub>i</sub>,v<sub>i</sub>) red. For each pair of red vertices do the
-    following:
-   (a) If there exists an edge from ui to V” in G, color ui green and v<sub>i</sub> blue or,
-       if there exists an edge from v<sub>i</sub> to U” in G, color v<sub>i</sub> green and ui blue.
-   (b) Recursively color each remaining red vertex connected in G to a blue vertex green, and
-       color its matched vertex blue.
-
-  Step 3 - For all remaining pairs of red colored vertices (u<sub>j</sub>,v<sub>j</sub>):
-  color u<sub>j</sub> blue and v<sub>j</sub> green if v<sub>j</sub> is connected to a green vertex.
-  Go to 2b.
-
-  Step 4 - For all remaining pairs of red vertices color u<sub>j</sub> green and v<sub>j</sub> blue.
-
-  Step 5 - Color all vertices u ∈ U” and all v ∈ V” blue. ∎
+## References
+[Rectangular Decomposition of Binary Images](http://library.utia.cas.cz/separaty/2012/ZOI/suk-rectangular%20decomposition%20of%20binary%20images.pdf)
+Having a binary object B (by a binary object we understand a set of all pixels of a binary image whose values equal one), we decompose it into K ≥ 1 blocks B<sub>1</sub>,B<sub>2</sub>,.., B<sub>K</sub> such that B<sub>i</sub> ∩ B<sub>j</sub> = ∅ for any i !≠ j and B = ∪<sub>k=1..B</sub>(B<sub>k</sub>)
 
 
-https://en.wikipedia.org/wiki/Matching_(graph_theory) A matching or independent edge set in a graph is a set of edges without common vertices.
+[Matching](https://en.wikipedia.org/wiki/Matching_\(graph_theory\)) A matching or independent edge set in a graph is a set of edges without common vertices.
    https://www.geeksforgeeks.org/maximum-bipartite-matching/
    https://www.geeksforgeeks.org/ford-fulkerson-algorithm-for-maximum-flow-problem/
    https://en.wikipedia.org/wiki/Edmonds_matrix

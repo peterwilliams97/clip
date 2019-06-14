@@ -225,18 +225,17 @@ following lemma.
 
 ### LEMMA 3. The graph G = (V, E) is a bipartite graph.
 
-![Graph Partition](partition.png) Suppose we have a maximum matching on a bipartite graph G = ((U, V), E). Let the matching contain k
-edges (a k matching).
+![Graph Partition](partition.png) Suppose we have a maximum matching on a bipartite graph
+G = ((U,V),E). Let the matching contain k edges (a _k_ matching).
 We observe the matching partitions the vertex sets U and V into sets U’, U”, V’, and V”,
 respectively such that U’ and V’ contain only matched vertices and U” and V” contain independent
 vertices (Fig. 4). Let (ui,vi) designate the ith pair of vertices in the matching.
 
-LEMMA 4. There does not exist any path from U” to V” that contains an edge (ui,vi).
-
+### LEMMA 4. There does not exist any path from U” to V” that contains an edge (ui,vi).
 
 We now state Algorithm 1, which describes a procedure for finding the maximum independent set of vertices of a bipartite graph.
 
-# Algorithm 1 Find the maximum independent set of vertices for a bipartite graph.
+## Algorithm 1. Find the maximum independent set of vertices for a bipartite graph.
 
   Step 1 - Find the maximum matching for the bipartite graph G = (U,V,E).
 

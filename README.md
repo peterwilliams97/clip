@@ -21,37 +21,51 @@ LEMMA 1. For a blob on R whose boundary contains N noncogrid concave vertices an
 vertices, there exists a minimum order rectangular partition of order N + 1.
 
 Let C’ denote a set of nonintersecting chords connecting points on the boundary
-of a blob B. Let |C‘| = L’ and ci‘ denote an element of C‘, i = 1,2,...L’.
+of a blob B. Let |C‘| = L’ and ci‘ denote an element of C‘, i = 1,2,..L’.
 Let c denote a chord correcting two points on the boundary of B such that c and
 C’ share no boundary points. Let x denote the number of intersections of c with C’.
 We then state
-LEMMA 2. The set C’ and the chord c partition B into L’ + x + 2 regions
+LEMMA 2. The set C’ and the chord c partition B into L’+x+2 regions
 
 THEOREM1. A blob B on a rectangular mosaic R has a minimum order rectangular partition of order
 P = N - L + 1 where
     N = Total number of concave vertices on the boundary of B.
     L = Maximum number of nonintersecting chords that can be drawn between cogrid concave vertices.
 
-The L nonintersecting chords partition B into (L + 1) subregions.
+Part 1
+The L nonintersecting chords partition B into L+1 subregions {bi} i = 1..L+1.
+Each bi contains ci noncogrid concave vertices.
+    Σ{i=1..L+1}ci = N-2L  Total number of noncogrid vertices.
+                          LHS: by definition of ci.
+                          RHS: number of concave vertices - (2 vertices) x number of cogrid vertices
+
+    ∃ P = Σ{i=1..L+1}(ci+1) by LEMMA 1
+        = Σ{i=1..L+1}ci + L+1
+        = N-2L + L+1  (Total number of noncogrid vertices)
+        = N-L+1
+
+Part 2 (Mim)
+
+
            +---+
            | 1 |
        +---+···|            N=1
        |   2   |            L=0
        +-------+            Rectangles=2
 
-          +---+
-          | 1 |
-       +--+···|             N=2
-       |  2   |             L=0
-       +······+---+         Rectangles=3
-       |    3     |
-       +----------+
+           +---+
+           | 1 |
+       +---+···|            N=2
+       |   2   |            L=0
+       +·······+---+        Rectangles=3
+       |     3     |
+       +-----------+
 
-          +---+
-          | 1 |
-       +--+···+---+         N=2
-       |    2     |         L=1
-       +----------+         Rectangles=2
+           +---+
+           | 1 |
+       +---+···+---+        N=2
+       |     2     |        L=1
+       +-----------+        Rectangles=2
 
            +---+
            | 1 |

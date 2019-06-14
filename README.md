@@ -223,11 +223,9 @@ of G, i.e. the largest subset of chords containing no intersections. We note tha
 rectangular partition, all chords are either horizontal or vertical. Consequently we have the
 following lemma.
 
-![Graph Partition](partition.png)
+### LEMMA 3. The graph G = (V, E) is a bipartite graph.
 
-LEMMA 3. The graph G = (V, E) is a bipartite graph.
-
-Suppose we have a maximum matching on a bipartite graph G = ((U, V), E). Let the matching contain k
+![Graph Partition](partition.png) Suppose we have a maximum matching on a bipartite graph G = ((U, V), E). Let the matching contain k
 edges (a k matching).
 We observe the matching partitions the vertex sets U and V into sets U’, U”, V’, and V”,
 respectively such that U’ and V’ contain only matched vertices and U” and V” contain independent

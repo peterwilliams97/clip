@@ -57,14 +57,16 @@ Part 1
 The L nonintersecting chords partition B into L+1 subregions {bi} i = 1..L+1.
 Each bi contains ci noncogrid concave vertices.
 
-Σ{i=1..L+1}ci = N-2L  Total number of noncogrid vertices.
+Σ<sub>i=1</sub><sup>L+1</sup>c<sub>i</sub> = N-2L  Total number of noncogrid vertices.
                         LHS: by definition of ci.
                         RHS: number of concave vertices - (2 vertices) x number of cogrid vertices
 
 `∃ P = Σ<sub>i=1</sub><sup>L+1</sup>(c<sub>i</sub>+1) by LEMMA 1`
+
 `    =  Σ<sub>i=1</sub><sup>L+1</sup>c<sub>i</sub> + L+1`
 
-`    = N-2L + L+1  (Total number of noncogrid vertices)
+`    = N-2L + L+1  (Total number of noncogrid vertices)`
+
 `   = N-L+1`
 
 Part 2 (Minimality)

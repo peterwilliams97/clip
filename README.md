@@ -1,23 +1,23 @@
 # clip
 Clipping code
 
-http://library.utia.cas.cz/separaty/2012/ZOI/suk-rectangular%20decomposition%20of%20binary%20images.pdf
-Having a binary object B (by a binary object we understand a set of all pixels of a binary image whose values equal one), we decompose it into K ≥ 1 blocks B1,B2, . . . , BK such that Bi ∩ Bj = ∅ for any i != j and B = union(Bk): k=1..B
+[Rectangular Decomposition of Binary Images](http://library.utia.cas.cz/separaty/2012/ZOI/suk-rectangular%20decomposition%20of%20binary%20images.pdf)
+Having a binary object B (by a binary object we understand a set of all pixels of a binary image whose values equal one), we decompose it into K ≥ 1 blocks B<sub>1</sub>,B<sub>2</sub>,.., B<sub>K</sub> such that B<sub>i</sub> ∩ B<sub>j</sub> = ∅ for any i !≠ j and B = ∪<sub>k=1..B</sub>(B<sub>k</sub>) k=1..B
 
-https://www.sciencedirect.com/science/article/pii/0734189X84901397
-Minimal Rectangular Partitions of Digitized Blobs
-L. FERRAIU,* P.V. SANKAR,* AND J. SKLANSKY
-Department of Electrical Engineering, Uniuersig of California, Irvine, California 92717
+[Minimal Rectangular Partitions of Digitized Blobs](https://www.sciencedirect.com/science/article/pii/
+L. FERRAIU, P.V. SANKAR, AND J. SKLANSKY
+Department of Electrical Engineering, University of California, Irvine, California 92717
 Received March 25,1983; accepted February 15,1984
 
 An algorithm is presented for partitioning a finite region of the digital plane into a minimum number of rectangular regions. It is demonstrated that the partition problem is equivalent to finding the maximum number of independent vertices in a bipartite graph. The graph’s matching properties are used to develop an algorithm that solves the independent vertex problem. The solution of this graph-theoretical problem leads to a solution of the partition problem.
 0 1984 by A&&c Press, Inc.
 
-A rectangular partition of a blob on R, B, is a partition {Pi} i=1..M,
-such that (∪ Pi = B) ∧ (Pi ∩ Pj = Ø i≠j) ∧ (Pi is a rectangle for all i).
-M is defined as the order of the partition {Pi}.
+A rectangular partition of a blob on R, B, is a partition {P<sub>i</sub>} i=1..M, such that
+(∪ P<sub>i</sub> = B) ∧ (P<sub>i</sub> ∩ P<sub>j</sub> = Ø i≠j) ∧ (P<sub>i</sub>is a rectangle for all i).
+M is defined as the order of the partition {P<sub>i</sub>}.
 
-LEMMA 1. For a blob on R whose boundary contains N noncogrid concave vertices and no cogrid concave
+#### LEMMA 1.
+For a blob on R whose boundary contains N noncogrid concave vertices and no cogrid concave
 vertices, there exists a minimum order rectangular partition of order N + 1.
 
 I. Minimality. For each concave vertex, I, we select and extend to the blob’s interior one of its
@@ -41,21 +41,17 @@ contradicts the noncogrid assumption. This leaves the only other possibility of 
 vertex can only be approached from the exterior of the blob.)
 This implies all interior subregion angles are 90°. Then the N + 1 subregions are all rectangles. ∎
 
-Let C’ denote a set of nonintersecting chords connecting points on the boundary
-of a blob B. Let JC ‘I = L’ and cf denote an element of C ‘, i = 1,2, . . . , L’.
-Let c denote a chord correcting two points on the boundary of B such that c and
-C’ share no boundary points. Let x denote the number of intersections of c with C’.
+Let C’ denote a set of nonintersecting chords connecting points on the boundary of a blob B.
+Let |C‘| = L’ and c<sub>i</sub>‘ denote an element of C‘, i = 1,2,..L’.
+Let c denote a chord correcting two points on the boundary of B such that c and C’ share no boundary
+points. Let x denote the number of intersections of c with C’.
 We then state
-LEMMA 2. The set C’ and
 
-Let C’ denote a set of nonintersecting chords connecting points on the boundary
-of a blob B. Let |C‘| = L’ and ci‘ denote an element of C‘, i = 1,2,..L’.
-Let c denote a chord correcting two points on the boundary of B such that c and
-C’ share no boundary points. Let x denote the number of intersections of c with C’.
-We then state
-LEMMA 2. The set C’ and the chord c partition B into L’+x+2 regions
+#### LEMMA 2.
+The set C’ and the chord c partition B into L’+x+2 regions
 
-THEOREM1. A blob B on a rectangular mosaic R has a minimum order rectangular partition of order
+#### THEOREM 1.
+A blob B on a rectangular mosaic R has a minimum order rectangular partition of order
 P = N - L + 1 where
     N = Total number of concave vertices on the boundary of B.
     L = Maximum number of nonintersecting chords that can be drawn between cogrid concave vertices.
@@ -105,9 +101,8 @@ By Lemma 1 and Part I of this theorem, the number of rectangles, P, in ϕ is
       = M + L’ + 1  +  N - 2L’- 2L1 - L2
       = M1 + M2 + M3 + L’ + 1  +  N - 2L’- 2L1 - L2
       = N - L’ + 1 + (M1 - 2L1) + (M2 - L2) + M3
-      ≥ N - L’ + 1         L’ = number of noninterecting chords between cogrid vertices
+      ≥ N - L’ + 1         L’ = number of nonintersecting chords between cogrid vertices
       ≥ N - L + 1          L = number of chords between cogrid vertices
-
 ∎
 
            +---+
@@ -163,33 +158,60 @@ By Lemma 1 and Part I of this theorem, the number of rectangles, P, in ϕ is
        +-------+
 
            +---+
-           |   |
-       +---+ 2 |
-       | 1 :   |            N=3
+           |   |      IS THIS ALLOWED? Partial inner paths.
+       +---+ 1 |
+       | 2 :   |            N=3
        |·······+-------+    L=0
-       |           : 4 |    Rectangles=4
-       |     3     +---+
+       |           : 3 |    Rectangles=4
+       |     4     +---+
        |           |
+       +-----------+
+
+           +---+
+           | 1 |
+       +---+···|
+       |   2   |            N=3
+       |·······+-------+    L=0
+       |       3       |    Rectangles=4
+       |···········+---+
+       |     4     |
+       +-----------+
+
+           +---+
+           |   |
+       +---+   |
+       | 1 :   |            N=3
+       |   : 2 +-------+    L=0
+       |   :   :   : 4 |    Rectangles=4
+       |   :   : 3 +---+
+       |   :   :   |
        +-----------+
 
        +-----------+        N=3
        |     1     |        L=1
        +---+···+---+        Rectangles=3
            |   |
-       +---+ 3 |
-       | 2 :   |
+       +---+ 2 |
+       | 3 :   |
        +-------+
 
+       +-----------+        N=3
+       |     1     |        L=1
+       +---+···+---+        Rectangles=3
+           | 2 |
+       +---+···|
+       |   3   |
+       +-------+
 
 Theorem 1 shows only the existence of a minimal order rectangular partition. In the remainder of
-this paper we show how to find an L set of chords which constitutes a maximal set of nonintersecting
-chords as described in the theorem. Once this set of chords has been found, we use Lemma 1 to obtain
+this paper we show how to find an L set of chords which constitutes a _maximal set of nonintersecting
+chords_ as described in the theorem. Once this set of chords has been found, we use Lemma 1 to obtain
 the minimum order rectangular partition.
 
 We first reduce the problem of finding L nonintersecting chords to a graph theory problem.
 Define a graph G = (V, E) such that
-(1) Each v<sub>i</sub> ∈ V corresponds to cogrid chord, say i, of B.
-(2) Each edge v<sub>i</sub>, v<sub>j</sub> ∈ E corresponds to the intersection of i and j in B.
+    1) Each v<sub>i</sub> ∈ V corresponds to cogrid chord, say i, of B.
+    2) Each edge v<sub>i</sub>, v<sub>j</sub> ∈ E corresponds to the intersection of i and j in B.
 
 Let G = (V, E) be a graph. See [6,7].
 

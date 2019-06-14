@@ -4,7 +4,7 @@ Clipping code
 [Rectangular Decomposition of Binary Images](http://library.utia.cas.cz/separaty/2012/ZOI/suk-rectangular%20decomposition%20of%20binary%20images.pdf)
 Having a binary object B (by a binary object we understand a set of all pixels of a binary image whose values equal one), we decompose it into K ≥ 1 blocks B<sub>1</sub>,B<sub>2</sub>,.., B<sub>K</sub> such that B<sub>i</sub> ∩ B<sub>j</sub> = ∅ for any i !≠ j and B = ∪<sub>k=1..B</sub>(B<sub>k</sub>) k=1..B
 
-[Minimal Rectangular Partitions of Digitized Blobs](https://www.sciencedirect.com/science/article/pii/
+# [Minimal Rectangular Partitions of Digitized Blobs](https://kundoc.com/pdf-minimal-rectangular-partitions-of-digitized-blobs-.html)
 L. FERRAIU, P.V. SANKAR, AND J. SKLANSKY
 Department of Electrical Engineering, University of California, Irvine, California 92717
 Received March 25,1983; accepted February 15,1984
@@ -251,7 +251,7 @@ following lemma.
 G = ((U,V),E). Let the matching contain k edges (a _k_ matching).
 We observe the matching partitions the vertex sets U and V into sets U’, U”, V’, and V”,
 respectively such that U’ and V’ contain only matched vertices and U” and V” contain independent
-vertices (Fig. 4). Let (ui,v<sub>i</sub>) designate the ith pair of vertices in the matching.
+vertices (Fig. 4). Let (u<sub>i</sub>,v<sub>i</sub>) designate the ith pair of vertices in the matching.
 
 #### LEMMA 4. There does not exist any path from U” to V” that contains an edge (ui,v<sub>i</sub>).
 

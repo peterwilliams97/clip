@@ -191,14 +191,19 @@ Define a graph G = (V, E) such that
 (2) Each edge vi, vj ∈ E corresponds to the intersection of i and j in B.
 
 Let G = (V, E) be a graph. See [6,7].
+
 DEFINITION 6. A set of vertices (edges) which covers all the edges (vertices) of G is called a
     vertex cover (edge cover) for G.
+
 DEFINITION 7. The smallest  number of vertices (edges) in any vertex (edge) covervfor G is called a
     vertex (edge) covering number and denoted by α0(G) (α1(G)).
+
 DEFINITION 8. A set of vertices (edges) in G is called independent if no two of its members are
     adjacent.
+
 DEFINITION 9. The largest number of vertices (edges) in an independent set is called the vertex (edge)
     independence number, β0 (β1).
+
 DEFINITION 10. A bipartite graph G is a graph whose vertex set V can be partitioned into two subsets
     V1 and V2, such that every edge of G joins V1 with V2.
 
@@ -210,6 +215,7 @@ THEOREM 3. (König): If G is bipartite, then the number of edges in a maximum
 matching equals the vertex covering number, that is β1 = α0 .
 
 6. THE GRAPH REDUCTION OF PROBLEM L CHORD
+
 In graph-theoretic terms, we are able to restate problem L Chord as follows:
 Graph Problem. For the graph G = (V, E) defined above, find the largest subset
 of independent nodes of G, i.e., the largest subset of chords containing no intersections.

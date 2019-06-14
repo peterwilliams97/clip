@@ -188,8 +188,8 @@ the minimum order rectangular partition.
 
 We first reduce the problem of finding L nonintersecting chords to a graph theory problem.
 Define a graph G = (V, E) such that
-(1) Each vi ∈ V corresponds to cogrid chord, say i, of B.
-(2) Each edge vi, vj ∈ E corresponds to the intersection of i and j in B.
+(1) Each v<sub>i</sub> ∈ V corresponds to cogrid chord, say i, of B.
+(2) Each edge v<sub>i</sub>, v<sub>j</sub> ∈ E corresponds to the intersection of i and j in B.
 
 Let G = (V, E) be a graph. See [6,7].
 
@@ -229,9 +229,9 @@ following lemma.
 G = ((U,V),E). Let the matching contain k edges (a _k_ matching).
 We observe the matching partitions the vertex sets U and V into sets U’, U”, V’, and V”,
 respectively such that U’ and V’ contain only matched vertices and U” and V” contain independent
-vertices (Fig. 4). Let (ui,vi) designate the ith pair of vertices in the matching.
+vertices (Fig. 4). Let (ui,v<sub>i</sub>) designate the ith pair of vertices in the matching.
 
-#### LEMMA 4. There does not exist any path from U” to V” that contains an edge (ui,vi).
+#### LEMMA 4. There does not exist any path from U” to V” that contains an edge (ui,v<sub>i</sub>).
 
 We now state Algorithm 1, which describes a procedure for finding the maximum independent set of vertices of a bipartite graph.
 
@@ -241,15 +241,15 @@ We now state Algorithm 1, which describes a procedure for finding the maximum in
 
   Step 2 - Color each pair of matched vertices (u<sub>i</sub>,v<sub>i</sub>) red. For each pair of red vertices do the
     following:
-   (a) If there exists an edge from ui to V” in G, color ui green and vi blue or,
-       if there exists an edge from vi to U” in G, color vi green and ui blue.
+   (a) If there exists an edge from ui to V” in G, color ui green and v<sub>i</sub> blue or,
+       if there exists an edge from v<sub>i</sub> to U” in G, color v<sub>i</sub> green and ui blue.
    (b) Recursively color each remaining red vertex connected in G to a blue vertex green, and
        color its matched vertex blue.
 
-  Step 3 - For all remaining pairs of red colored vertices (uj,vj): color uj blue and
-    vj green if vj is connected to a green vertex. Go to 2b.
+  Step 3 - For all remaining pairs of red colored vertices (u<sub>j</sub>,v<sub>j</sub>): color u<sub>j</sub> blue and
+    v<sub>j</sub> green if v<sub>j</sub> is connected to a green vertex. Go to 2b.
 
-  Step 4 - For all remaining pairs of red vertices color uj green and vj blue.
+  Step 4 - For all remaining pairs of red vertices color u<sub>j</sub> green and v<sub>j</sub> blue.
 
   Step 5 - Color all vertices u ∈ U” and all v ∈ V” blue. ∎
 

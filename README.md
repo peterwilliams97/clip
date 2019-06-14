@@ -225,7 +225,7 @@ following lemma.
 
 #### LEMMA 3. The graph G = (V,E) is a bipartite graph.
 
-![Graph Partition](partition.png) ![Rectangles](rectangles.pn.png) Suppose we have a maximum matching on a bipartite graph
+![Graph Partition](partition.png) ![Rectangles](rectangles.png) Suppose we have a maximum matching on a bipartite graph
 G = ((U,V),E). Let the matching contain k edges (a _k_ matching).
 We observe the matching partitions the vertex sets U and V into sets U’, U”, V’, and V”,
 respectively such that U’ and V’ contain only matched vertices and U” and V” contain independent

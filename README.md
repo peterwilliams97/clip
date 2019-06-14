@@ -107,8 +107,8 @@ By Lemma 1 and Part I of this theorem, the number of rectangles, P, in ϕ is
       = N - L’ + 1 + (M1 - 2L1) + (M2 - L2) + M3
       ≥ N - L’ + 1         L’ = number of noninterecting chords between cogrid vertices
       ≥ N - L + 1          L = number of chords between cogrid vertices
-    ∎
 
+∎
 
            +---+
            | 1 |

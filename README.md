@@ -246,8 +246,9 @@ We now state Algorithm 1, which describes a procedure for finding the maximum in
    (b) Recursively color each remaining red vertex connected in G to a blue vertex green, and
        color its matched vertex blue.
 
-  Step 3 - For all remaining pairs of red colored vertices (u<sub>j</sub>,v<sub>j</sub>): color u<sub>j</sub> blue and
-    v<sub>j</sub> green if v<sub>j</sub> is connected to a green vertex. Go to 2b.
+  Step 3 - For all remaining pairs of red colored vertices (u<sub>j</sub>,v<sub>j</sub>):
+  color u<sub>j</sub> blue and v<sub>j</sub> green if v<sub>j</sub> is connected to a green vertex.
+  Go to 2b.
 
   Step 4 - For all remaining pairs of red vertices color u<sub>j</sub> green and v<sub>j</sub> blue.
 

@@ -61,7 +61,7 @@ Each bi contains ci noncogrid concave vertices.
                         LHS: by definition of ci.
                         RHS: number of concave vertices - (2 vertices) x number of cogrid vertices
 
-∃ P = Σ<sub>i=1</sub><sup>L+1<sup>(c<sub>i</sub>+1) by LEMMA 1
+∃ P = Σ<sub>i=1</sub><sup>L+1</sup>(c<sub>i</sub>+1) by LEMMA 1
     = Σ{i=1..L+1}ci + L+1
     = N-2L + L+1  (Total number of noncogrid vertices)
     = N-L+1

@@ -13,45 +13,98 @@ Received March 25,1983; accepted February 15,1984
 An algorithm is presented for partitioning a finite region of the digital plane into a minimum number of rectangular regions. It is demonstrated that the partition problem is equivalent to finding the maximum number of independent vertices in a bipartite graph. The graph’s matching properties are used to develop an algorithm that solves the independent vertex problem. The solution of this graph-theoretical problem leads to a solution of the partition problem.
 0 1984 by A&&c Press, Inc.
 
-A rectangular partition of a blob on R, B, is a partition { Pi } E,
-such that (∪ iPi = B)∧(Pi ∩ Pj = Cpi # j)∧(Pi is a rectangle for all i.)
+A rectangular partition of a blob on R, B, is a partition {Pi} i=1..M,
+such that (∪ Pi = B) ∧ (Pi ∩ Pj = Ø i≠j) ∧ (Pi is a rectangle for all i).
+M is defined as the order of the partition {Pi}.
+
+LEMMA 1. For a blob on R whose boundary contains N noncogrid concave vertices and no cogrid concave
+vertices, there exists a minimum order rectangular partition of order N + 1.
+
+Let C’ denote a set of nonintersecting chords connecting points on the boundary
+of a blob B. Let |C‘| = L’ and ci‘ denote an element of C‘, i = 1,2,...L’.
+Let c denote a chord correcting two points on the boundary of B such that c and
+C’ share no boundary points. Let x denote the number of intersections of c with C’.
+We then state
+LEMMA 2. The set C’ and the chord c partition B into L’ + x + 2 regions
 
 THEOREM1. A blob B on a rectangular mosaic R has a minimum order rectangular partition of order
-N - L + 1 where,
-N = Total number of concave vertices on the boundary of B.
-L = Maximum number of nonintersecting chords that can be drawn between cogrid concave vertices.
+P = N - L + 1 where
+    N = Total number of concave vertices on the boundary of B.
+    L = Maximum number of nonintersecting chords that can be drawn between cogrid concave vertices.
 
-The L nonintersecting chords partition B into (L + 1) subregions
-           +--+
-           |  |
-       +---+  |               N=3
-       |      +---+           L=0
-       |          |           Rectangles=4
-       |       +--+
+The L nonintersecting chords partition B into (L + 1) subregions.
+           +---+
+           | 1 |
+       +---+···|            N=1
+       |   2   |            L=0
+       +-------+            Rectangles=2
+
+          +---+
+          | 1 |
+       +--+···|             N=2
+       |  2   |             L=0
+       +······+---+         Rectangles=3
+       |    3     |
+       +----------+
+
+          +---+
+          | 1 |
+       +--+···+---+         N=2
+       |    2     |         L=1
+       +----------+         Rectangles=2
+
+           +---+
+           | 1 |
+       +---+···+---+        N=4
+       |     2     |        L=2  "Non-intersecting" must include not sharing a vertex.
+       +---+···+---+        Rectangles=3
+           | 3 |
+           +---+
+
+           +---+
+           |   |
+       +---+   +---+        N=4
+       | 1 : 2 : 3 |        L=2  "Non-intersecting" must include not sharing a vertex.
+       +---+   +---+        Rectangles=3
+           |   |
+           +---+
+
+               +---+
+               | 1 |
+       +-------+···+---+    N=4
+       |       2       |    L=2
+       +---+···+-------+    Rectangles=3
+           | 3 |
+           +---+
+
+           +---+
+           | 1 |
+       +---+···+---+        N=3
+       |       : 3 |        L=1  "Non-intersecting" must include not sharing a vertex.
+       |   2   +---+        Rectangles=3
        |       |
        +-------+
 
-           +--+
-           |  |
-       +---+  +---+           N=3
-       |          |           L=1
-       |          |           Rectangles=3
-       |      +---+
-       |      |
-       +------+
+           +---+
+           | 1 |
+       +---+···|
+       |   2   |            N=3
+       |·······+------+     L=0
+       |          : 4 |     Rectangles=4
+       |    3     +---+
+       |          |
+       +----------+
 
-       +----------+           N=3
-       |          |           L=1
-       |          |           Rectangles=3
-       +---+  +---+
-           |  |
-       +---+  |
-       |      |
-       |      |
-       +------+
+       +-----------+        N=3
+       |     1     |        L=1
+       +---+···+---+        Rectangles=3
+           |   |
+       +---+ 3 |
+       | 2 :   |
+       +-------+
 
 
-We first reduce the problem of finding L nonintersecting chords to a graph theory problem (Fig. 3).
+We first reduce the problem of finding L nonintersecting chords to a graph theory problem.
 Define a graph G = (V, E) such that
 (1) Each q ∈ V corresponds to cogrid chord, say i, of B.
 (2) Each edge vi, vj E corresponds to the intersection of i and j in B.
@@ -95,8 +148,8 @@ LEMMA 4. There does not exist any path from U” to V” that contains an edge u
 Algorithm 1
 Find the maximum independent set of vertices for a bipartite graph.
 Step 1 - Find the maximum matching for the bipartite graph G = (U, V, E).
-Step 2 - Color each pair of matched vertices (ui, vi) red. For each pair of red
-vertices do the following.
+Step 2 - Color each pair of matched vertices (ui, vi) red. For each pair of red vertices do the
+following:
    (a) If there exists an edge from ui to V” in G, color ui green and vi blue or,
        if there exists an edge from vi to U” in G, color vi green and vi blue.
    (b) Recursively color each remaining red vertex connected in G to a blue vertex         green, and color its matched vertex blue.

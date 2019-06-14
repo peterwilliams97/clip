@@ -10,7 +10,7 @@ An algorithm is presented for partitioning a finite region of the digital plane 
 0 1984 by A&&c Press, Inc.
 
 A rectangular partition of a blob on R, B, is a partition {P<sub>i</sub>} i=1..M, such that
-(∪ P<sub>i</sub> = B) ∧ (P<sub>i</sub> ∩ P<sub>j</sub> = Ø i≠j) ∧ (P<sub>i</sub>is a rectangle for all i).
+(∪ P<sub>i</sub> = B) ∧ (P<sub>i</sub> ∩ P<sub>j</sub> = Ø i≠j) ∧ (P<sub>i</sub> is a rectangle for all i).
 M is defined as the order of the partition {P<sub>i</sub>}.
 
 #### LEMMA 1.
@@ -19,8 +19,11 @@ vertices, there exists a minimum order rectangular partition of order N + 1.
 
 I. Minimality. For each concave vertex, I, we select and extend to the blob’s interior one of its
 edges. The extension will terminate at:
+
 (1) The digital blob’s boundary, or
+
 (2) The extension of some other concave vertex, J, into the blob’s interior.
+
 Such a procedure will partition the blob’s interior into N + 1 regions. This is clear since each
 concave vertex is located in a single subregion and its extension divides the subregion into two new
 subregions. Then by induction we obtain N + 1 subregions.

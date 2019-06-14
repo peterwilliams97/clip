@@ -119,9 +119,9 @@ By Lemma 1 and Part I of this theorem, the number of rectangles, P, in ϕ is
            +---+
            | 1 |
        +---+···|            N=2
-       |   2   |            L=0
-       |·······+---+        Rectangles=3
-       |     3     |
+       |       |            L=0
+       |   2   +---+        Rectangles=3
+       |       : 3 |
        +-----------+
 
            +---+
@@ -222,6 +222,8 @@ Graph Problem. For the graph G = (V, E) defined above, find the largest subset o
 of G, i.e. the largest subset of chords containing no intersections. We note that in the
 rectangular partition, all chords are either horizontal or vertical. Consequently we have the
 following lemma.
+
+![Graph Partition](partition.png)
 
 LEMMA 3. The graph G = (V, E) is a bipartite graph.
 

@@ -56,13 +56,6 @@ func newInterval(v0, v1 *Vertex, vertical bool) Interval {
 	return Interval{Segment: s, id: idCounter}
 }
 
-func testSegment(v0, v1 *Vertex, tree *IntervalTree, vertical bool) bool {
-	i := newInterval(v0, v1, vertical)
-	t := (*interval.Tree)(tree)
-	matches := t.Get(i)
-	return len(matches) > 0
-}
-
 func CreateIntervalTree(segments []*Segment, name string) *IntervalTree {
 	common.Log.Debug("CreateIntervalTree: %d %q", len(segments), name)
 	tree := &IntervalTree{}
@@ -175,7 +168,7 @@ func (q query1d) Overlap(b interval.Range) bool {
 	}
 	x := float64(q)
 
-	return x0 <= x && x < x1
+	return x0 <= x && x <= x1
 }
 
 func (i Interval) Overlap(b interval.Range) bool {
@@ -189,16 +182,16 @@ func (i Interval) Overlap(b interval.Range) bool {
 		panic("unknown type")
 	}
 
-	// Half-open interval indexing.
-	return i.x1 > x0 && i.x0 < x1
+	// Full-open interval indexing. !@#$
+	return i.x1 >= x0 && i.x0 <= x1
 }
 func (i Interval) ID() uintptr                { return i.id }
 func (i Interval) Start() interval.Comparable { return Int(i.x0) }
 func (i Interval) End() interval.Comparable   { return Int(i.x1) }
 func (i Interval) NewMutable() interval.Mutable {
 	return &Mutable{
-		_x0:     Int(i.x0),
-		_x1:     Int(i.x1),
+		_x0:     i.Start().(Int),
+		_x1:     i.End().(Int),
 		Segment: i.Segment,
 		id:      i.id}
 }

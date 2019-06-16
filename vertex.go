@@ -47,28 +47,17 @@ func (v *Vertex) Validate() {
 }
 
 func (v Vertex) String() string {
-	return v.MyString()
-}
-
-func (v Vertex) MyString() string {
-	// if v == nil {
-	// 	return "(nil)"
-	// }
 	sp, sn := "(nil)", "(nil)"
 	if v.prev != nil {
-		sp = fmt.Sprintf("%+g", v.prev.point)
+		sp = fmt.Sprintf("%g", v.prev.point)
 	}
 	if v.next != nil {
-		sn = fmt.Sprintf("%+g", v.next.point)
+		sn = fmt.Sprintf("%g", v.next.point)
 	}
-	// fmt.Printf("VERTEX{point:%v index:%d prev:%p %v next:%p %v concave:%t visited:%t}\n",
-	// 	v.point, v.index,
-	// 	v.prev, sp,
-	// 	v.next, sn,
-	// 	v.concave, v.visited)
-	// point:{X:0 Y:0} iPath:0 index:0 concave:false next:0xc0000ec340 prev:0xc0000ec240 visited:false
-	return fmt.Sprintf("VERTEX{point:%+g index:%d prev:%p %v next:%p %v concave:%t visited:%t}",
-		v.point, v.index, v.prev, sp, v.next, sn, v.concave, v.visited)
+	// return fmt.Sprintf("VERTEX{point:%+g index:%d prev:%p %v next:%p %v concave:%t visited:%t}",
+	// 	v.point, v.index, v.prev, sp, v.next, sn, v.concave, v.visited)
+	return fmt.Sprintf("VERTEX{index:%d prev:%v point:%g next:%v concave:%t visited:%t}",
+		v.index, sp, v.point, sn, v.concave, v.visited)
 }
 
 func (v *Vertex) Join(prev, next *Vertex) {
@@ -77,12 +66,13 @@ func (v *Vertex) Join(prev, next *Vertex) {
 }
 
 // Segment is a vertical or horizontal segment.
-type Segment struct { // A chord?
+type Segment struct { // A side? !@#$
 	x0, x1       float64 // Start and end of the interval in the vertical or horizontal direction.
 	start, end   *Vertex // Vertices at the start and end of the segment.
 	vertical     bool    // Is this a vertical segment?
 	number       int
 	iStart, iEnd int
+	pStart, pEnd Point
 }
 
 // func NewSeg(x0, x1 float64) *Segment {
@@ -95,6 +85,7 @@ func newSegment(start, end *Vertex, vertical bool) *Segment {
 	return newSegmentVertices(start, end, vertical, nil)
 }
 
+// !@#$ remove
 func newSegmentVertices(start, end *Vertex, vertical bool, vertices []*Vertex) *Segment {
 	var x0, x1 float64
 	if vertical { // Why vertical -> X  ? !@#$ Seems to be consistently inverted.
@@ -117,6 +108,8 @@ func newSegmentVertices(start, end *Vertex, vertical bool, vertices []*Vertex) *
 		number:   -1,
 		iStart:   vertexIndex(vertices, start),
 		iEnd:     vertexIndex(vertices, end),
+		pStart:   start.point,
+		pEnd:     end.point,
 	}
 }
 

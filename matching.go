@@ -8,10 +8,10 @@ import (
 
 // bipartiteIndependentSet computes a maximum independent set for a bipartite graph.
 // It takes O(sqrt(V) * E) time.
-// * `n` is a the number of vertices in the first component
-// * `m` is the number of vertices in the second component
-// * `edges` is a list of edges in the bipartite graph represented by pairs of integers
-// **Returns** A pair of lists representing the maximum independent set for the graph
+//  `n`: the number of vertices in the first component
+//  `m`: the number of vertices in the second component
+//  `edges`: a list of edges in the bipartite graph represented by pairs of integers
+// Returns: A pair of lists representing the maximum independent set for the graph
 // http://en.wikipedia.org/wiki/Maximum_independent_set
 // http://en.wikipedia.org/wiki/Bipartite_graph
 // A set is independent if and only if its complement is a vertex cover.
@@ -24,10 +24,7 @@ func bipartiteIndependentSet(n, m int, edges [][2]int) ([]int, []int) {
 	return complement(coverL, n), complement(coverR, m)
 }
 
-// func compareInt(a, b int) {
-//   return a - b
-// }
-// complement returns [0:`n`) \ `list`
+// complement returns [0:`n`) / `list`
 func complement(list []int, n int) []int {
 	sort.Ints(list)
 
@@ -47,9 +44,9 @@ func complement(list []int, n int) []int {
 // bipartiteVertexCover computes a minimum vertex cover of a bipartite graph.
 //  `n`: number of vertices in the left component
 //  `m`: number of vertices in the right component
-//  `edges`:  list of edges from the left component connecting to the right component represented
+//  `edges`: list of edges from the left component connecting to the right component represented
 //      by pairs of integers between 0 and n-1,m-1 respectively
-// Returns A pair of lists representing the vertices in the left component and the right component
+// Returns: A pair of lists representing the vertices in the left component and the right component
 //   respectively which are in the cover.
 // Internally, this implementation uses the Hopcroft-Karp algorithm and König's theorem to compute
 // the minimal vertex cover of a bipartite graph in O(sqrt(V) * E) time.

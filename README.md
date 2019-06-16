@@ -171,7 +171,7 @@ We now state Algorithm 1, which describes a procedure for finding the maximum in
 
   Step 2 - Color each pair of matched vertices (u<sub>i</sub>,v<sub>i</sub>) red. For each pair of red vertices do the
     following:
-   (a) If there exists an edge from ui to V” in G, color ui green and v<sub>i</sub> blue or,
+   (a) If there exists an edge from u<sub>i</sub>  to V” in G, color u<sub>i</sub>  green and v<sub>i</sub> blue or,
        if there exists an edge from v<sub>i</sub> to U” in G, color v<sub>i</sub> green and ui blue.
    (b) Recursively color each remaining red vertex connected in G to a blue vertex green, and
        color its matched vertex blue.
@@ -261,9 +261,9 @@ We now state Algorithm 1, which describes a procedure for finding the maximum in
            +---+
            |   |
        +---+   |
-       | 1 :   |            N=3
+       |   :   |            N=3
        |   : 2 +-------+    L=0
-       |   :   :   : 4 |    Rectangles=4
+       | 1 :   :   : 4 |    Rectangles=4
        |   :   : 3 +---+
        |   :   :   |
        +-----------+

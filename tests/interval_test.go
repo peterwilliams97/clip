@@ -157,9 +157,9 @@ func makeIntervals(n int) []clip.Interval {
 // createTree returns an IntervalTree for `intervals`.
 func createTree(intervals []clip.Interval) *clip.IntervalTree {
 	validateIntervals(intervals)
-	segments := make([]*clip.Segment, len(intervals))
+	segments := make([]*clip.Side, len(intervals))
 	for i, iv := range intervals {
-		segments[i] = iv.Segment
+		segments[i] = iv.Side
 	}
 	validateIntervals(intervals)
 	tree := clip.CreateIntervalTree(segments, "interval_test")
@@ -181,8 +181,8 @@ func testPoint(t *testing.T, tree *clip.IntervalTree, intervals []clip.Interval,
 	sortIntervals(expected)
 
 	var actual []clip.Interval
-	tree.QueryPoint(p, func(s *clip.Segment) bool {
-		actual = append(actual, clip.Interval{Segment: s})
+	tree.QueryPoint(p, func(s *clip.Side) bool {
+		actual = append(actual, clip.Interval{Side: s})
 		return false
 	})
 	sortIntervals(actual)

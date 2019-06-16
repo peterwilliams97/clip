@@ -8,20 +8,20 @@ import (
 	"github.com/unidoc/unipdf/common"
 )
 
-// DecomposeRegion breaks rectilinear polygon `paths` into non-overlapping rectangles.
-// * `paths` is an array of loops vertices representing the boundary of the region.  Each loop must
-//    be a simple rectilinear polygon (ie no self intersections), and the line segments of any two
-//    loops must only meet at vertices.  The collection of loops must also be bounded.
-// * `clockwise` is a boolean flag which if set flips the orientation of the loops.  Default is
-//    `true`, ie all loops follow the right-hand rule (counter clockwise orientation)
-// **Returns** A list of rectangles that decompose the region bounded by loops into the smallest
+// DecomposeRegion breaks rectilinear polygon `polygon` into non-overlapping rectangles.
+// `polygon`: an array of contours representing the boundary of the region.  Each contour must
+//    be a simple rectilinear polygon (i.e. no self-intersections), and the line segments of any two
+//    contours must only meet at vertices.
+// `clockwise`: a boolean flag which if set flips the orientation of the loops.  Default is
+//    `true`, ie all loops follow the right-hand rule (counter clockwise orientation) !@#$
+//  Returns: A list of rectangles that decompose the region bounded by loops into the smallest
 //  number of non-overlapping rectangles
-func DecomposeRegion(paths []Path, clockwise bool) []Rect {
-	paths = integerizePoly(paths)
+func DecomposeRegion(polygon []Path, clockwise bool) []Rect {
+	polygon = integerizePoly(polygon)
 	// clockwise = !clockwise
 	common.Log.Info("DecomposeRegion:====================================-")
-	common.Log.Info("DecomposeRegion: paths=%d clockwise=%t", len(paths), clockwise)
-	for i, path := range paths {
+	common.Log.Info("DecomposeRegion: polygon=%d clockwise=%t", len(polygon), clockwise)
+	for i, path := range polygon {
 		common.Log.Info("\t%3d:%+v", i, path)
 	}
 	common.Log.Info("DecomposeRegion:====================================+")
@@ -29,8 +29,8 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 	// First step: unpack all vertices into internal format.
 	var vertices []*Vertex
 
-	npaths := make([][]*Vertex, len(paths))
-	for i, path := range paths {
+	contours := make([][]*Vertex, len(polygon))
+	for i, path := range polygon {
 		n := len(path)
 		prev := path[n-3]
 		cur := path[n-2]
@@ -76,71 +76,68 @@ func DecomposeRegion(paths []Path, clockwise bool) []Rect {
 			}
 
 			vtx := &Vertex{
-				point:   cur,
+				Point:   cur,
 				iPath:   i,
 				index:   (j + n - 1) % n,
 				concave: concave,
 			}
 			common.Log.Debug("vtx=%+v", vtx)
-			npaths[i] = append(npaths[i], vtx)
+			contours[i] = append(contours[i], vtx)
 			vertices = append(vertices, vtx)
 		}
 	}
 
 	// Next build interval trees for segments, link vertices into a list.
-	// hsegments: vertical edges
-	// vsegments: horizontal edges
-	var hsegments []*Segment
-	var vsegments []*Segment
+	// vSides: vertical edges
+	// hSides: horizontal edges
+	var vSides, hSides []*Side
 
-	for _, p := range npaths {
-		for j := 0; j < len(p); j++ {
-			k := (j + 1) % len(p)
-			a := p[j]
-			b := p[k]
-			if a.point.X == b.point.X {
-				// hsegments are vertical !@#$
-				hsegments = append(hsegments, newSegment(a, b, false))
-				if a.point.Y == b.point.Y {
+	for _, contour := range contours {
+		for j, p0 := range contour {
+			k := (j + 1) % len(contour)
+			p1 := contour[k]
+			if p0.X == p1.X {
+				vSides = append(vSides, newSide(p0, p1, false))
+				if p0.Y == p1.Y {
 					panic("duplicate point")
 				}
 			} else {
-				// vsegments are horizontal !@#$
-				vsegments = append(vsegments, newSegment(a, b, true))
-				if a.point.Y != b.point.Y {
+				// hSides are horizontal !@#$
+				hSides = append(hSides, newSide(p0, p1, true))
+				if p0.Y != p1.Y {
 					panic("diagonal")
 				}
 			}
 			// if clockwise {
-			// 	b.next = a
+			// 	p1.next = p0
 			// } else {
-			// 	a.prev, a.next = a, b
+			// 	p0.prev, p0.next = p0, p1
 			// }
 			if clockwise {
-				a.prev, b.next = b, a
+				p0.prev, p1.next = p1, p0
 			} else {
-				a.next, b.prev = b, a
+				p0.next, p1.prev = p1, p0
 			}
 			common.Log.Debug("clockwise=%t len(p)=%d\n\tp[%d]=%v\n\tp[%d]=%v",
-				clockwise, len(p), j, a, k, b)
-			a.Validate()
-			b.Validate()
+				clockwise, len(contour), j, p0, k, p1)
+			p0.Validate()
+			p1.Validate()
 		}
 	}
-	htree := CreateIntervalTree(hsegments, "hsegments")
-	vtree := CreateIntervalTree(vsegments, "vsegments")
+	htree := CreateIntervalTree(vSides, "vSides")
+	vtree := CreateIntervalTree(hSides, "hSides")
 
 	// Find horizontal and vertical diagonals.
-	// Are these supposed to be chords? !@#$%
-	hdiagonals := getDiagonals(vertices, npaths, false, vtree)
-	vdiagonals := getDiagonals(vertices, npaths, true, htree)
+	// Are these supposed to be cogrid chords? !@#$%
+	hdiagonals := getDiagonals(vertices, contours, false, vtree)
+	vdiagonals := getDiagonals(vertices, contours, true, htree)
 
 	// Find all splitting edges
 	splitters := findSplitters(hdiagonals, vdiagonals)
 
 	// Cut all the splitting diagonals
 	for _, splitter := range splitters {
-		splitSegment(splitter)
+		splitSide(splitter)
 	}
 
 	// Split all concave vertices
@@ -195,14 +192,14 @@ func splitConcave(vertices []*Vertex) {
 	common.Log.Info("================^^^================")
 
 	// First step: build segment tree from vertical segments.
-	var leftsegments, rightsegments []*Segment
+	var leftsegments, rightsegments []*Side
 	for i, v := range vertices {
 		common.Log.Debug("\t%3d: %+v", i, v)
-		if v.next.point.Y == v.point.Y {
-			if v.next.point.X < v.point.X { // <--
-				leftsegments = append(leftsegments, newSegmentVertices(v, v.next, true, vertices))
+		if v.next.Y == v.Y {
+			if v.next.X < v.X { // <--
+				leftsegments = append(leftsegments, newSide(v, v.next, true))
 			} else { //                        -->
-				rightsegments = append(rightsegments, newSegmentVertices(v, v.next, true, vertices))
+				rightsegments = append(rightsegments, newSide(v, v.next, true))
 			}
 		}
 	}
@@ -236,75 +233,75 @@ func splitConcave(vertices []*Vertex) {
 		//     e)  |     f)   |    g)   |   h) |
 		//         +-->    <--+         ^      ^
 
-		y0 := v.point.Y
-		var toLeft bool                  // a),b),e),f)
-		if v.prev.point.X == v.point.X { // cases e)-h)
-			toLeft = v.prev.point.Y < y0 // e),f)
+		y0 := v.Y
+		var toLeft bool      // a),b),e),f)
+		if v.prev.X == v.X { // cases e)-h)
+			toLeft = v.prev.Y < y0 // e),f)
 		} else { //                         cases a)-d)
-			toLeft = v.next.point.Y < y0 // a), b)
+			toLeft = v.next.Y < y0 // a), b)
 		}
 		common.Log.Info("splitConcave: i=%d toLeft=%t y0=%g", i, toLeft, y0)
-		common.Log.Info("prev=%v point=%v next=%v", v.prev.point, v.point, v.next.point)
-		common.Log.Info("X:prev->point: %s | Y:prev->point: %s | Y:next->point: %s",
-			getDirection(v.prev.point.X, v.point.X),
-			getDirection(v.prev.point.Y, y0),
-			getDirection(v.next.point.Y, y0))
+		common.Log.Info("prev=%v point=%v next=%v", v.prev.Point, v.Point, v.next.Point)
+		common.Log.Info("X:prev->Point: %s | Y:prev->Point: %s | Y:next->Point: %s",
+			getDirection(v.prev.X, v.X),
+			getDirection(v.prev.Y, y0),
+			getDirection(v.next.Y, y0))
 
 		v.Validate()
 
 		// Scan a horizontal ray
 		var closestDistance float64
-		var closestSegment *Segment
-		common.Log.Info("----scan: v=%+v  toLeft=%t", v.point, toLeft)
+		var closestSide *Side
+		common.Log.Info("----scan: v=%+v  toLeft=%t", v.Point, toLeft)
 		if !toLeft {
 			closestDistance = -infinity
-			righttree.QueryPoint(v.point.X, func(h *Segment) bool {
-				y := h.start.point.Y
+			righttree.QueryPoint(v.X, func(h *Side) bool {
+				y := h.start.Y
 				match := y0 > y && y > closestDistance
 				common.Log.Info("cb: righttree y=%g  y0=%g closestDistance=%g\n\th=%+v",
 					y, y0, closestDistance, *h)
 				if match {
 					closestDistance = y
-					closestSegment = h
+					closestSide = h
 				}
-				common.Log.Info("cb: match=%t\n\tclosest=%g %+v", match, closestDistance, closestSegment)
+				common.Log.Info("cb: match=%t\n\tclosest=%g %+v", match, closestDistance, closestSide)
 				return false
 			})
 		} else {
 			closestDistance = infinity
-			lefttree.QueryPoint(v.point.X, func(h *Segment) bool {
-				y := h.start.point.Y
+			lefttree.QueryPoint(v.X, func(h *Side) bool {
+				y := h.start.Y
 				match := y0 < y && y < closestDistance
 				common.Log.Info("cb: lefttree y=%g  y0=%g closestDistance=%g\n\th=%+v",
 					y, y0, closestDistance, *h)
 				if match {
 					closestDistance = y
-					closestSegment = h
+					closestSide = h
 				}
-				common.Log.Info("cb: match=%t\n\tclosest=%g %+v", match, closestDistance, closestSegment)
+				common.Log.Info("cb: match=%t\n\tclosest=%g %+v", match, closestDistance, closestSide)
 				return false
 			})
 		}
 
-		common.Log.Info("closestDistance=%g closestSegment=%+v", closestDistance, closestSegment)
-		common.Log.Info("closestSegment\n\tstart=%+v\n\t  end=%+v\n\t    v=%+v",
-			*closestSegment.start, *closestSegment.end, *v)
+		common.Log.Info("closestDistance=%g closestSide=%+v", closestDistance, closestSide)
+		common.Log.Info("closestSide\n\tstart=%+v\n\t  end=%+v\n\t    v=%+v",
+			*closestSide.start, *closestSide.end, *v)
 
 		// panic("Done")
 
 		// Create two splitting vertices.
-		point := Point{v.point.X, closestDistance}
-		splitA := &Vertex{point: point}
-		splitB := &Vertex{point: point}
+		point := Point{v.X, closestDistance}
+		splitA := &Vertex{Point: point}
+		splitB := &Vertex{Point: point}
 
 		// Clear concavity flag
 		v.concave = false
 
 		// Split vertices
-		splitA.prev = closestSegment.start
-		closestSegment.start.next = splitA
-		splitB.next = closestSegment.end
-		closestSegment.end.prev = splitB
+		splitA.prev = closestSide.start
+		closestSide.start.next = splitA
+		splitB.next = closestSide.end
+		closestSide.end.prev = splitB
 
 		common.Log.Info("splitA=%+v", *splitA)
 		common.Log.Info("splitB=%+v", *splitB)
@@ -318,15 +315,15 @@ func splitConcave(vertices []*Vertex) {
 		} else {
 			tree = lefttree
 		}
-		tree.Delete(closestSegment)
-		tree.Insert(newSegment(closestSegment.start, splitA, true))
-		tree.Insert(newSegment(splitB, closestSegment.end, true))
+		tree.Delete(closestSide)
+		tree.Insert(newSide(closestSide.start, splitA, true))
+		tree.Insert(newSide(splitB, closestSide.end, true))
 
 		// Append vertices
 		vertices = append(vertices, splitA, splitB)
 
 		// Cut v, 2 different cases
-		if v.prev.point.X == v.point.X {
+		if v.prev.X == v.X {
 			// Case 1
 			//             ^
 			//             |
@@ -358,7 +355,7 @@ func splitConcave(vertices []*Vertex) {
 // type Splitter struct{}
 
 // getDiagonals returns the chords off concave vertices in `vertices`.
-func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *IntervalTree) []*Segment {
+func getDiagonals(vertices []*Vertex, contours [][]*Vertex, vertical bool, tree *IntervalTree) []*Side {
 	common.Log.Info("getDiagonals: vertices=%d vertical=%t", len(vertices), vertical)
 
 	var concave []*Vertex
@@ -372,20 +369,20 @@ func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *I
 	if vertical {
 		sort.Slice(concave, func(i, j int) bool {
 			a, b := concave[i], concave[j]
-			d := a.point.Y - b.point.Y
+			d := a.Y - b.Y
 			if d != 0 {
 				return d > 0
 			}
-			return a.point.X > b.point.X
+			return a.X > b.X
 		})
 	} else {
 		sort.Slice(concave, func(i, j int) bool {
 			a, b := concave[i], concave[j]
-			d := a.point.X - b.point.X
+			d := a.X - b.X
 			if d != 0 {
 				return d > 0
 			}
-			return a.point.Y > b.point.Y
+			return a.Y > b.Y
 		})
 	}
 	common.Log.Info("concave=%d", len(concave))
@@ -393,15 +390,15 @@ func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *I
 		common.Log.Info("%4d: %v", i, s)
 	}
 
-	var diagonals []*Segment
+	var diagonals []*Side
 	for i := 1; i < len(concave); i++ {
 		a := concave[i-1]
 		b := concave[i]
 		var sameDirection bool
 		if vertical {
-			sameDirection = a.point.Y == b.point.Y
+			sameDirection = a.Y == b.Y
 		} else {
-			sameDirection = a.point.X == b.point.X
+			sameDirection = a.X == b.X
 		}
 		common.Log.Info("i=%d: sameDirection=%t\n\ta=%v\n\tb=%v", i, sameDirection, a, b)
 		if !sameDirection {
@@ -409,7 +406,7 @@ func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *I
 		}
 
 		if a.iPath == b.iPath {
-			n := len(npaths[a.iPath])
+			n := len(contours[a.iPath])
 			d := (a.index - b.index + n) % n
 			common.Log.Info("i=%d: n=%d d=%d", i, n, d)
 			if d == 1 || d == n-1 {
@@ -417,9 +414,9 @@ func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *I
 				continue
 			}
 		}
-		if !testSegment(a, b, tree, vertical) {
+		if !testSide(a, b, tree, vertical) {
 			// Check orientation of diagonal
-			diagonals = append(diagonals, newSegment(a, b, vertical))
+			diagonals = append(diagonals, newSide(a, b, vertical))
 		}
 
 	}
@@ -430,17 +427,17 @@ func getDiagonals(vertices []*Vertex, npaths [][]*Vertex, vertical bool, tree *I
 	return diagonals
 }
 
-// testSegment returns true if segment [v0,v1] intersects an existing segment.
-func testSegment(v0, v1 *Vertex, tree *IntervalTree, vertical bool) bool {
+// testSide returns true if segment [v0,v1] intersects an existing segment.
+func testSide(v0, v1 *Vertex, tree *IntervalTree, vertical bool) bool {
 	i := newInterval(v0, v1, vertical)
 	t := (*interval.Tree)(tree)
 	matches := t.Get(i)
-	common.Log.Info("testSegment: i=%v vertical=%t tree=%v matches=%d\n\tv0=%v\n\tv1=%v",
+	common.Log.Info("testSide: i=%v vertical=%t tree=%v matches=%d\n\tv0=%v\n\tv1=%v",
 		i, vertical, tree, matches, v0, v1)
 	return len(matches) > 0
 }
 
-func findSplitters(hdiagonals, vdiagonals []*Segment) []*Segment {
+func findSplitters(hdiagonals, vdiagonals []*Side) []*Side {
 	common.Log.Info("findSplitters: hdiagonals=%d vdiagonals=%d", len(hdiagonals), len(vdiagonals))
 
 	// First find crossings
@@ -469,7 +466,7 @@ func findSplitters(hdiagonals, vdiagonals []*Segment) []*Segment {
 	common.Log.Info("selectedR=%d", len(selectedR))
 
 	// Convert into result format
-	result := make([]*Segment, len(selectedL)+len(selectedR))
+	result := make([]*Side, len(selectedL)+len(selectedR))
 	for i, v := range selectedL {
 		result[i] = hdiagonals[v]
 	}
@@ -483,18 +480,18 @@ func findSplitters(hdiagonals, vdiagonals []*Segment) []*Segment {
 }
 
 type Crossing struct {
-	h, v *Segment
+	h, v *Side
 }
 
 // findCrossings returns the all intersections of horizontal and vertical chords.
-func findCrossings(hdiagonals, vdiagonals []*Segment) []Crossing {
+func findCrossings(hdiagonals, vdiagonals []*Side) []Crossing {
 	htree := CreateIntervalTree(hdiagonals, "hdiagonals")
 	var crossings []Crossing
 	for _, v := range vdiagonals {
-		// x := v.start.point.X
+		// x := v.start.X
 		// !@#$ hdiagonals has to be verticals for this query to work!.
-		htree.QueryPoint(v.start.point.Y, func(h *Segment) bool {
-			x := h.start.point.X
+		htree.QueryPoint(v.start.Y, func(h *Side) bool {
+			x := h.start.X
 			if v.x0 <= x && x <= v.x1 {
 				crossings = append(crossings, Crossing{h: h, v: v})
 			}
@@ -504,9 +501,9 @@ func findCrossings(hdiagonals, vdiagonals []*Segment) []Crossing {
 	return crossings
 }
 
-func splitSegment(segment *Segment) {
-	common.Log.Info("splitSegment: %v", segment)
-	panic("splitSegment")
+func splitSide(segment *Side) {
+	common.Log.Info("splitSide: %v", segment)
+	panic("splitSide")
 	//Store references
 	a := segment.start
 	b := segment.end
@@ -520,8 +517,8 @@ func splitSegment(segment *Segment) {
 	b.concave = false
 
 	// Compute orientation
-	ao := pa.point.Cpt(segment.vertical) == a.point.Cpt(segment.vertical)
-	bo := pb.point.Cpt(segment.vertical) == b.point.Cpt(segment.vertical)
+	ao := pa.Point.Cpt(segment.vertical) == a.Point.Cpt(segment.vertical)
+	bo := pb.Point.Cpt(segment.vertical) == b.Point.Cpt(segment.vertical)
 
 	if ao && bo {
 		//Case 1:
@@ -577,7 +574,7 @@ func findRegions(vertices []*Vertex) []Rect {
 	for i := 0; i < n; i++ {
 		vertices[i].visited = false
 		v := vertices[i]
-		common.Log.Info("%4d: %p %v %v %v", i, v, *v, v.prev.point, v.next.point)
+		common.Log.Info("%4d: %p %v %v %v", i, v, *v, v.prev.Point, v.next.Point)
 	}
 	for _, v := range vertices {
 		v.Validate()
@@ -601,7 +598,7 @@ func findRegions(vertices []*Vertex) []Rect {
 		lo := Point{infinity, infinity}
 		hi := Point{-infinity, -infinity}
 		for ; !v.visited; v = v.next {
-			p := v.point
+			p := v.Point
 			lo.X = math.Min(p.X, lo.X)
 			hi.X = math.Max(p.X, hi.X)
 			lo.Y = math.Min(p.Y, lo.Y)

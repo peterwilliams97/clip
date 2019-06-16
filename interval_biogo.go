@@ -24,7 +24,7 @@ func (c Int) Compare(b interval.Comparable) int {
 
 // Interval is an interval over points in either the horizontal or vertical direction.
 type Interval struct {
-	*Segment
+	*Side
 	id uintptr
 	// Sub        []Interval
 	// Payload interface{}
@@ -39,9 +39,9 @@ type IntervalTree interval.Tree
 
 // NewIntv is a hack for testing.
 func NewIntv(x0, x1 float64) Interval {
-	s := Segment{x0: x0, x1: x1}
+	s := Side{x0: x0, x1: x1}
 	idCounter = (idCounter + 10) % 10
-	i := Interval{Segment: &s, id: idCounter}
+	i := Interval{Side: &s, id: idCounter}
 	return i
 }
 
@@ -51,22 +51,22 @@ func (i Interval) Range() (float64, float64) {
 }
 
 func newInterval(v0, v1 *Vertex, vertical bool) Interval {
-	s := newSegment(v0, v1, vertical)
+	s := newSide(v0, v1, vertical)
 	idCounter++
-	return Interval{Segment: s, id: idCounter}
+	return Interval{Side: s, id: idCounter}
 }
 
-func CreateIntervalTree(segments []*Segment, name string) *IntervalTree {
+func CreateIntervalTree(segments []*Side, name string) *IntervalTree {
 	common.Log.Debug("CreateIntervalTree: %d %q", len(segments), name)
 	tree := &IntervalTree{}
 	for i, s := range segments {
 		tree.Insert(s)
 		sStart, sEnd := "(nil)", "(nil)"
 		if s.start != nil {
-			sStart = fmt.Sprintf("%+g", s.start.point)
+			sStart = fmt.Sprintf("%+g", s.start.Point)
 		}
 		if s.end != nil {
-			sEnd = fmt.Sprintf("%+g", s.end.point)
+			sEnd = fmt.Sprintf("%+g", s.end.Point)
 		}
 		common.Log.Debug("-- %d: %v=%s-%s tree=%v", i, s, sStart, sEnd, tree)
 	}
@@ -114,10 +114,10 @@ func ValidateIntervals(intervals []Interval) {
 	}
 }
 
-func (tree *IntervalTree) Insert(s *Segment) {
+func (tree *IntervalTree) Insert(s *Side) {
 	tree.Validate()
 	idCounter++                              // !@#$ Critical for passing tests
-	i := Interval{Segment: s, id: idCounter} // counter has effect
+	i := Interval{Side: s, id: idCounter} // counter has effect
 
 	t := (*interval.Tree)(tree)
 	// d := *s
@@ -129,22 +129,22 @@ func (tree *IntervalTree) Insert(s *Segment) {
 	common.Log.Debug("treeInsert: %v s=%+v", tree, *s)
 }
 
-func (tree *IntervalTree) Delete(s *Segment) {
-	i := Interval{Segment: s}
+func (tree *IntervalTree) Delete(s *Side) {
+	i := Interval{Side: s}
 	t := (*interval.Tree)(tree)
 	t.Delete(i, true)
 	common.Log.Debug("treeDelete: %v s=%+v", tree, *s)
 }
 
-func (tree *IntervalTree) QueryPoint(x float64, cb func(s *Segment) bool) bool {
+func (tree *IntervalTree) QueryPoint(x float64, cb func(s *Side) bool) bool {
 	var matched bool
 	common.Log.Debug("QueryPoint: x=%g tree=%+v", x, tree)
 	t := (*interval.Tree)(tree)
 	q := query1d(x)
 	ok := t.DoMatching(func(e interval.Interface) bool {
 		iv := e.(Interval)
-		matched := cb(iv.Segment)
-		common.Log.Debug(" iv=%#v matched=%t", *iv.Segment, matched)
+		matched := cb(iv.Side)
+		common.Log.Debug(" iv=%#v matched=%t", *iv.Side, matched)
 		return matched
 	}, q)
 	if matched != ok {
@@ -192,20 +192,20 @@ func (i Interval) NewMutable() interval.Mutable {
 	return &Mutable{
 		_x0:     i.Start().(Int),
 		_x1:     i.End().(Int),
-		Segment: i.Segment,
+		Side: i.Side,
 		id:      i.id}
 }
 func (i Interval) String() string {
 	seg := "   (nil)    "
-	if i.Segment != nil {
-		seg = fmt.Sprintf("%p[%g,%g)", i.Segment, i.x0, i.x1)
+	if i.Side != nil {
+		seg = fmt.Sprintf("%p[%g,%g)", i.Side, i.x0, i.x1)
 	}
 	return fmt.Sprintf("%15s#%d", seg, i.id)
 }
 
 type Mutable struct {
 	_x0, _x1 Int
-	*Segment
+	*Side
 	id uintptr
 }
 
@@ -224,9 +224,9 @@ func (m *Mutable) SetEnd(c interval.Comparable) {
 	m._x1 = c.(Int)
 }
 
-// func (t *interval.Tree) queryPoint(x float64, f func(h *Segment)) {
+// func (t *interval.Tree) queryPoint(x float64, f func(h *Side)) {
 // }
-// func (t *interval.Tree) insert(h *Segment) {
+// func (t *interval.Tree) insert(h *Side) {
 // }
-// func (t *interval.Tree) remove(h *Segment) {
+// func (t *interval.Tree) remove(h *Side) {
 // }

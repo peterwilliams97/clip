@@ -2,7 +2,7 @@
 Clipping code based on
 
 # [Minimal Rectangular Partitions of Digitized Blobs](https://kundoc.com/pdf-minimal-rectangular-partitions-of-digitized-blobs-.html)
-_L. FERRAIU, P.V. SANKAR, AND J. SKLANSKY_
+_L. FERRAI, P.V. SANKAR, AND J. SKLANSKY_
 _Department of Electrical Engineering, University of California, Irvine, California 92717_
 _Received March 25,1983; accepted February 15,1984_
 
@@ -155,22 +155,23 @@ following lemma.
 
 #### LEMMA 3. The graph G = (V,E) is a bipartite graph.
 
-![Graph Partition](partition.png) ![Rectangles](rectangles.png) Suppose we have a maximum matching on a bipartite graph
-G = ((U,V),E). Let the matching contain k edges (a _k_ matching).
+![Graph Partition](partition.png) ![Rectangles](rectangles.png) Suppose we have a maximum matching
+on a bipartite graph G = ((U,V),E). Let the matching contain k edges (a _k_ matching).
 We observe the matching partitions the vertex sets U and V into sets U’, U”, V’, and V”,
 respectively such that U’ and V’ contain only matched vertices and U” and V” contain independent
 vertices (Fig. 4). Let (u<sub>i</sub>,v<sub>i</sub>) designate the ith pair of vertices in the matching.
 
 #### LEMMA 4. There does not exist any path from U” to V” that contains an edge (ui,v<sub>i</sub>).
 
-We now state Algorithm 1, which describes a procedure for finding the maximum independent set of vertices of a bipartite graph.
+We now state Algorithm 1, which describes a procedure for finding the maximum independent set of
+vertices of a bipartite graph.
 
 ## Algorithm 1. Find the maximum independent set of vertices for a bipartite graph.
 
   Step 1 - Find the maximum matching for the bipartite graph G = ((U,V),E).
 
-  Step 2 - Color each pair of matched vertices (u<sub>i</sub>,v<sub>i</sub>) red. For each pair of red vertices do the
-    following:
+  Step 2 - Color each pair of matched vertices (u<sub>i</sub>,v<sub>i</sub>) red. For each pair of
+    red vertices do the following:
    (a) If there exists an edge from u<sub>i</sub>  to V” in G, color u<sub>i</sub>  green and v<sub>i</sub> blue or,
        if there exists an edge from v<sub>i</sub> to U” in G, color v<sub>i</sub> green and ui blue.
    (b) Recursively color each remaining red vertex connected in G to a blue vertex green, and

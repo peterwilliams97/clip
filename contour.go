@@ -41,16 +41,16 @@ func GetContours(array NDArray, clockwise bool) []Path {
 	return loops
 }
 
-type cSegment struct { // !@#$ Same as Segment?
+type cSide struct { // !@#$ Same as Side?
 	start, end int
 	direction  bool
 	height     int
 	visited    bool
-	prev, next *cSegment
+	prev, next *cSide
 }
 
-func newCSegment(start, end int, direction bool, height int) *cSegment {
-	return &cSegment{
+func newCSide(start, end int, direction bool, height int) *cSide {
+	return &cSide{
 		start:     start,
 		end:       end,
 		direction: direction,
@@ -60,11 +60,11 @@ func newCSegment(start, end int, direction bool, height int) *cSegment {
 
 type cVertex struct { // !@#$ Same as Vertex?
 	x, y        int
-	segment     *cSegment
+	segment     *cSide
 	orientation bool
 }
 
-func newVertex(x, y int, segment *cSegment, orientation bool) *cVertex {
+func newVertex(x, y int, segment *cSide, orientation bool) *cVertex {
 	return &cVertex{
 		x:           x,
 		y:           y,
@@ -73,10 +73,10 @@ func newVertex(x, y int, segment *cSegment, orientation bool) *cVertex {
 	}
 }
 
-func getParallelCountours(array NDArray, direction bool) []*cSegment {
+func getParallelCountours(array NDArray, direction bool) []*cSide {
 	h, w := array.Shape()
 
-	var contours []*cSegment
+	var contours []*cSide
 	// Scan top row
 	var a, b, c, d bool
 
@@ -88,7 +88,7 @@ func getParallelCountours(array NDArray, direction bool) []*cSegment {
 			continue
 		}
 		if a {
-			contours = append(contours, newCSegment(x0, j, direction, 0))
+			contours = append(contours, newCSide(x0, j, direction, 0))
 		}
 		if b {
 			x0 = j
@@ -96,7 +96,7 @@ func getParallelCountours(array NDArray, direction bool) []*cSegment {
 		a = b
 	}
 	if a {
-		contours = append(contours, newCSegment(x0, j, direction, 0))
+		contours = append(contours, newCSide(x0, j, direction, 0))
 	}
 	// Scan center
 	for i = 1; i < h; i++ {
@@ -111,9 +111,9 @@ func getParallelCountours(array NDArray, direction bool) []*cSegment {
 			}
 			if a != b {
 				if a {
-					contours = append(contours, newCSegment(j, x0, direction, i))
+					contours = append(contours, newCSide(j, x0, direction, i))
 				} else {
-					contours = append(contours, newCSegment(x0, j, direction, i))
+					contours = append(contours, newCSide(x0, j, direction, i))
 				}
 			}
 			if c != d {
@@ -124,9 +124,9 @@ func getParallelCountours(array NDArray, direction bool) []*cSegment {
 		}
 		if a != b {
 			if a {
-				contours = append(contours, newCSegment(j, x0, direction, i))
+				contours = append(contours, newCSide(j, x0, direction, i))
 			} else {
-				contours = append(contours, newCSegment(x0, j, direction, i))
+				contours = append(contours, newCSide(x0, j, direction, i))
 			}
 		}
 	}
@@ -139,7 +139,7 @@ func getParallelCountours(array NDArray, direction bool) []*cSegment {
 			continue
 		}
 		if a {
-			contours = append(contours, newCSegment(j, x0, direction, h))
+			contours = append(contours, newCSide(j, x0, direction, h))
 		}
 		if b {
 			x0 = j
@@ -147,12 +147,12 @@ func getParallelCountours(array NDArray, direction bool) []*cSegment {
 		a = b
 	}
 	if a {
-		contours = append(contours, newCSegment(j, x0, direction, h))
+		contours = append(contours, newCSide(j, x0, direction, h))
 	}
 	return contours
 }
 
-func getVertices(contours []*cSegment) []*cVertex {
+func getVertices(contours []*cSide) []*cVertex {
 	vertices := make([]*cVertex, len(contours)*2)
 	for i, h := range contours {
 		if !h.direction {
@@ -166,7 +166,7 @@ func getVertices(contours []*cSegment) []*cVertex {
 	return vertices
 }
 
-func walk(v *cSegment, clockwise bool) Path {
+func walk(v *cSide, clockwise bool) Path {
 	var result Path
 	for !v.visited {
 		v.visited = true

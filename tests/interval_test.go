@@ -169,7 +169,7 @@ func testPoint(t *testing.T, tree *clip.IntervalTree, intervals []*clip.Interval
 	var expected []*clip.Interval
 	for _, v := range intervals {
 		x0, x1 := v.Range()
-		if x0 <= p && p < x1 {
+		if x0 <= p && p <= x1 {
 			expected = append(expected, v)
 		}
 	}
@@ -186,9 +186,9 @@ func testPoint(t *testing.T, tree *clip.IntervalTree, intervals []*clip.Interval
 		sortIntervals(intervals)
 		common.Log.Error("===============================** %d", len(intervals))
 		a0, a1 := 0.0, 0.0
-		for i, iv := range intervals {
-			x0, x1 := iv.Range()
-			common.Log.Error("%3d: %v (%+g %+g)", i, iv, x0-a0, x1-a1)
+		for i, v := range intervals {
+			x0, x1 := v.Range()
+			common.Log.Error("%3d: %v (%+g %+g)", i, v, x0-a0, x1-a1)
 			a0, a1 = x0, x1
 		}
 		common.Log.Error("p=%g", p)

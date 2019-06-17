@@ -158,7 +158,7 @@ func rectilinearToInterval(r Rectilinear) Interval {
 }
 
 func (i *Interval) X0X1YVert() (x0, x1, y float64, vertical bool) {
-	common.Log.Info("Interval.X0X1YVert: %v", i)
+	// common.Log.Info("Interval.X0X1YVert: %v", i)
 	return i.x0, i.x1, i.y, i.vertical
 }
 

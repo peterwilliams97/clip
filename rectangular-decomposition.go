@@ -34,6 +34,7 @@ func DecomposeRegion(polygon []Path, clockwise bool) []Rect {
 		for j, v0 := range contour {
 			k := (j + 1) % len(contour)
 			v1 := contour[k]
+			common.Log.Info("j=%d k=%d\n\tv0=%v\n\tv1=%v", j, k, v0, v1)
 			if v0.X == v1.X {
 				vSides = append(vSides, newSide(v0, v1))
 			} else {

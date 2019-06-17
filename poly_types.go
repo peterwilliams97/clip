@@ -100,15 +100,32 @@ func newSide(start, end *Vertex) *Side {
 	vertical := start.X == end.X
 
 	var x0, x1, y float64
-	if vertical { // Why vertical -> X  ? !@#$ Seems to be consistently inverted.
-		x0, x1, y = start.X, end.X, start.Y
-	} else {
+	if vertical {
 		x0, x1, y = start.Y, end.Y, start.X
+		// common.Log.Info("vertical=%t x0=%.1f x1=%.1f y=%.1f x0==x1=%t  x1-x0=%g",
+		// 	vertical, x0, x1, y, x0 == x1, x1-x0)
+		if x0 == x1 {
+			common.Log.Error("\n\tstart=%v\n\t  end=%v", start, end)
+			panic("not allowed")
+		}
+	} else {
+		x0, x1, y = start.X, end.X, start.Y
+		// common.Log.Info("vertical=%t x0=%.1f x1=%.1f y=%.1f x0==x1=%t  x1-x0=%g",
+		// 	vertical, x0, x1, y, x0 == x1, x1-x0)
+		if x0 == x1 {
+			common.Log.Error("\n\tstart=%v\n\t  end=%v", start, end)
+			panic("not allowed")
+		}
 	}
+	// common.Log.Info("vertical=%t x0=%.1f x1=%.1f y=%.1f x0==x1=%t  x1-x0=%g",
+	// 	vertical, x0, x1, y, x0 == x1, x1-x0)
 	if x0 > x1 {
 		x0, x1 = x1, x0
 	}
+	// common.Log.Info("vertical=%t x0=%.1f x1=%.1f y=%.1f x0==x1=%t  x1-x0=%g",
+	// 	vertical, x0, x1, y, x0 == x1, x1-x0)
 	if x0 == x1 {
+		common.Log.Error("\n\tstart=%v\n\t  end=%v", start, end)
 		panic("not allowed")
 	}
 

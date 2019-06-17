@@ -141,8 +141,8 @@ func random() float64 {
 }
 
 // makeIntervals returns a slice of random intervals [x0, x1]:  r0 =< x0 <= x1 <= 2*r1
-func makeIntervals(n int) []clip.Interval {
-	var intervals []clip.Interval
+func makeIntervals(n int) []*clip.Interval {
+	var intervals []*clip.Interval
 	for i := 0; i < n; i++ {
 		x0 := random()
 		dx := random()
@@ -155,23 +155,18 @@ func makeIntervals(n int) []clip.Interval {
 }
 
 // createTree returns an IntervalTree for `intervals`.
-func createTree(intervals []clip.Interval) *clip.IntervalTree {
+func createTree(intervals []*clip.Interval) *clip.IntervalTree {
 	validateIntervals(intervals)
-	segments := make([]*clip.Side, len(intervals))
-	for i, iv := range intervals {
-		segments[i] = iv.Side
-	}
-	validateIntervals(intervals)
-	tree := clip.CreateIntervalTree(segments, "interval_test")
+	tree := clip.CreateIntervalTreeInterval(intervals, "interval_test")
 	validateIntervals(intervals)
 	return tree
 }
 
 // testPoint checks that `p` is matched by the correct intervals in `tree`. `tree` must be
 // constructed from `intervals`.
-func testPoint(t *testing.T, tree *clip.IntervalTree, intervals []clip.Interval, p float64) {
+func testPoint(t *testing.T, tree *clip.IntervalTree, intervals []*clip.Interval, p float64) {
 	validateIntervals(intervals)
-	var expected []clip.Interval
+	var expected []*clip.Interval
 	for _, v := range intervals {
 		x0, x1 := v.Range()
 		if x0 <= p && p < x1 {
@@ -180,9 +175,9 @@ func testPoint(t *testing.T, tree *clip.IntervalTree, intervals []clip.Interval,
 	}
 	sortIntervals(expected)
 
-	var actual []clip.Interval
-	tree.QueryPoint(p, func(s *clip.Side) bool {
-		actual = append(actual, clip.Interval{Side: s})
+	var actual []*clip.Interval
+	tree.QueryPoint(p, func(r clip.Rectilinear) bool {
+		actual = append(actual, r.(*clip.Interval))
 		return false
 	})
 	sortIntervals(actual)
@@ -206,7 +201,7 @@ func testPoint(t *testing.T, tree *clip.IntervalTree, intervals []clip.Interval,
 }
 
 // sortIntervals sorts `intervals` by their lower then their bounds in ascending order.
-func sortIntervals(intervals []clip.Interval) {
+func sortIntervals(intervals []*clip.Interval) {
 	validateIntervals(intervals)
 	sort.Slice(intervals, func(i, j int) bool {
 		a, b := intervals[i], intervals[j]
@@ -220,7 +215,7 @@ func sortIntervals(intervals []clip.Interval) {
 	validateIntervals(intervals)
 }
 
-func validateIntervals(intervals []clip.Interval) {
+func validateIntervals(intervals []*clip.Interval) {
 	clip.ValidateIntervals(intervals)
 	// x0Counts := map[float64]int{}
 	// x1Counts := map[float64]int{}
@@ -243,7 +238,7 @@ func validateIntervals(intervals []clip.Interval) {
 }
 
 // sameIntervals returns true if `intervals0` and `intervals1` are the same.
-func sameIntervals(intervals0, intervals1 []clip.Interval) bool {
+func sameIntervals(intervals0, intervals1 []*clip.Interval) bool {
 	if len(intervals0) != len(intervals1) {
 		return false
 	}
@@ -258,13 +253,13 @@ func sameIntervals(intervals0, intervals1 []clip.Interval) bool {
 	return true
 }
 
-func showDifference(intervals0, intervals1 []clip.Interval, p float64) {
+func showDifference(intervals0, intervals1 []*clip.Interval, p float64) {
 	n := len(intervals0)
 	if len(intervals1) > n {
 		n = len(intervals1)
 	}
 	for i := 0; i < n; i++ {
-		iv0, iv1 := clip.Interval{}, clip.Interval{}
+		var iv0, iv1 *clip.Interval
 		var a0, a1, b0, b1 float64
 		var m0, m1 bool
 

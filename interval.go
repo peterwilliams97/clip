@@ -23,11 +23,17 @@ func (c Int) Compare(b interval.Comparable) int {
 }
 
 // Interval is an interval over points in either the horizontal or vertical direction.
+// Intervals can be made for any type that fullfills the `Rectilinear` interface.
+// x0 and x1 are the lower and upper ends of the interval
+// y is the coordinate in the other axis than x0, x1
+// If vertical is false, x0, x1 are on the X-axis and yY is on the Y-axis.
+// If vertical is true, x0, x1 are on the Y-axis and y is on the X-axis.
+// r is the original object.
 type Interval struct {
-	*Side
-	id uintptr
-	// Sub        []Interval
-	// Payload interface{}
+	x0, x1, y float64
+	vertical  bool
+	id        uintptr
+	r         Rectilinear
 }
 
 // idCounter is used to give Interval.id unique values for all intervals. Interval trees won't work
@@ -38,37 +44,61 @@ var idCounter uintptr
 type IntervalTree interval.Tree
 
 // NewIntv is a hack for testing.
-func NewIntv(x0, x1 float64) Interval {
-	s := Side{x0: x0, x1: x1}
+func NewIntv(x0, x1 float64) *Interval {
+	s := &Side{x0: x0, x1: x1}
 	idCounter = (idCounter + 10) % 10
-	i := Interval{Side: &s, id: idCounter}
-	return i
+	iv := rectilinearToInterval(s)
+	return &iv
+
 }
 
-// Range returns
+// Range returns the ends of the interval
 func (i Interval) Range() (float64, float64) {
 	return i.x0, i.x1
 }
 
 func newInterval(v0, v1 *Vertex, vertical bool) Interval {
-	s := newSide(v0, v1, vertical)
-	idCounter++
-	return Interval{Side: s, id: idCounter}
+	s := newSide(v0, v1)
+	return rectilinearToInterval(s)
 }
 
-func CreateIntervalTree(segments []*Side, name string) *IntervalTree {
-	common.Log.Debug("CreateIntervalTree: %d %q", len(segments), name)
+func CreateIntervalTreeSides(sides []*Side, name string) *IntervalTree {
+	rects := make([]Rectilinear, len(sides))
+	for i, s := range sides {
+		rects[i] = s
+	}
+	return CreateIntervalTree(rects, name)
+}
+
+func CreateIntervalTreeChords(chords []*Chord, name string) *IntervalTree {
+	rects := make([]Rectilinear, len(chords))
+	for i, c := range chords {
+		rects[i] = c
+	}
+	return CreateIntervalTree(rects, name)
+}
+
+func CreateIntervalTreeInterval(intervals []*Interval, name string) *IntervalTree {
+	rects := make([]Rectilinear, len(intervals))
+	for i, iv := range intervals {
+		rects[i] = iv
+	}
+	return CreateIntervalTree(rects, name)
+}
+
+func CreateIntervalTree(rects []Rectilinear, name string) *IntervalTree {
+	common.Log.Debug("CreateIntervalTree: %d %q", len(rects), name)
 	tree := &IntervalTree{}
-	for i, s := range segments {
-		tree.Insert(s)
-		sStart, sEnd := "(nil)", "(nil)"
-		if s.start != nil {
-			sStart = fmt.Sprintf("%+g", s.start.Point)
-		}
-		if s.end != nil {
-			sEnd = fmt.Sprintf("%+g", s.end.Point)
-		}
-		common.Log.Debug("-- %d: %v=%s-%s tree=%v", i, s, sStart, sEnd, tree)
+	for _, r := range rects {
+		tree.Insert(r)
+		// sStart, sEnd := "(nil)", "(nil)"
+		// if s.start != nil {
+		// 	sStart = fmt.Sprintf("%+g", s.start.Point)
+		// }
+		// if s.end != nil {
+		// 	sEnd = fmt.Sprintf("%+g", s.end.Point)
+		// }
+		// common.Log.Debug("-- %d: %v=%s-%s tree=%v", i, s, sStart, sEnd, tree)
 	}
 	// This is critical!
 	t := (*interval.Tree)(tree)
@@ -77,12 +107,12 @@ func CreateIntervalTree(segments []*Side, name string) *IntervalTree {
 	return tree
 }
 
-func (tree *IntervalTree) getIntervals() []Interval {
-	var intervals []Interval
+func (tree *IntervalTree) getIntervals() []*Interval {
+	var intervals []*Interval
 	t := (*interval.Tree)(tree)
 	t.Do(func(e interval.Interface) bool {
 		iv := e.(Interval)
-		intervals = append(intervals, iv)
+		intervals = append(intervals, &iv)
 		return false
 	})
 	return intervals
@@ -93,7 +123,7 @@ func (tree *IntervalTree) Validate() {
 	ValidateIntervals(intervals)
 }
 
-func ValidateIntervals(intervals []Interval) {
+func ValidateIntervals(intervals []*Interval) {
 	return
 	x0Counts := map[float64]int{}
 	x1Counts := map[float64]int{}
@@ -114,37 +144,52 @@ func ValidateIntervals(intervals []Interval) {
 	}
 }
 
-func (tree *IntervalTree) Insert(s *Side) {
-	tree.Validate()
-	idCounter++                              // !@#$ Critical for passing tests
-	i := Interval{Side: s, id: idCounter} // counter has effect
+func rectilinearToInterval(r Rectilinear) Interval {
+	idCounter++ // !@#$ Critical for passing tests
+	x0, x1, y, vertical := r.X0X1YVert()
+	return Interval{
+		x0:       x0,
+		x1:       x1,
+		y:        y,
+		vertical: vertical,
+		r:        r,
+		id:       idCounter, // counter has effect
+	}
+}
 
+func (i *Interval) X0X1YVert() (x0, x1, y float64, vertical bool) {
+	common.Log.Info("Interval.X0X1YVert: %v", i)
+	return i.x0, i.x1, i.y, i.vertical
+}
+
+func (tree *IntervalTree) Insert(r Rectilinear) {
+	tree.Validate()
+	i := rectilinearToInterval(r)
 	t := (*interval.Tree)(tree)
-	// d := *s
 	if err := t.Insert(i, true); err != nil {
-		panic(fmt.Errorf("IntervalTree.Insert s=%v err=%v", *s, err))
+		panic(fmt.Errorf("IntervalTree.Insert s=%v err=%v", r, err))
 	}
 	// common.Log.Info("Insert: s=%v->%v i=%v", d, *s, i)
 	tree.Validate()
-	common.Log.Debug("treeInsert: %v s=%+v", tree, *s)
+	common.Log.Debug("treeInsert: %v r=%#v", tree, r)
 }
 
-func (tree *IntervalTree) Delete(s *Side) {
-	i := Interval{Side: s}
+func (tree *IntervalTree) Delete(r Rectilinear) {
+	i := rectilinearToInterval(r)
 	t := (*interval.Tree)(tree)
 	t.Delete(i, true)
-	common.Log.Debug("treeDelete: %v s=%+v", tree, *s)
+	common.Log.Debug("treeDelete: %v r=%#v", tree, r)
 }
 
-func (tree *IntervalTree) QueryPoint(x float64, cb func(s *Side) bool) bool {
+func (tree *IntervalTree) QueryPoint(x float64, cb func(Rectilinear) bool) bool {
 	var matched bool
 	common.Log.Debug("QueryPoint: x=%g tree=%+v", x, tree)
 	t := (*interval.Tree)(tree)
 	q := query1d(x)
 	ok := t.DoMatching(func(e interval.Interface) bool {
 		iv := e.(Interval)
-		matched := cb(iv.Side)
-		common.Log.Debug(" iv=%#v matched=%t", *iv.Side, matched)
+		matched := cb(iv.r)
+		common.Log.Debug(" iv=%#v matched=%t", iv.r, matched)
 		return matched
 	}, q)
 	if matched != ok {
@@ -162,7 +207,7 @@ func (q query1d) Overlap(b interval.Range) bool {
 	case Interval:
 		x0, x1 = bc.x0, bc.x1
 	case *Mutable:
-		x0, x1 = float64(bc._x0), float64(bc._x1)
+		x0, x1 = float64(bc.x0), float64(bc.x1)
 	default:
 		panic("unknown type")
 	}
@@ -177,7 +222,7 @@ func (i Interval) Overlap(b interval.Range) bool {
 	case Interval:
 		x0, x1 = bc.x0, bc.x1
 	case *Mutable:
-		x0, x1 = bc.x0, bc.x1
+		x0, x1 = float64(bc.x0), float64(bc.x1)
 	default:
 		panic("unknown type")
 	}
@@ -190,38 +235,42 @@ func (i Interval) Start() interval.Comparable { return Int(i.x0) }
 func (i Interval) End() interval.Comparable   { return Int(i.x1) }
 func (i Interval) NewMutable() interval.Mutable {
 	return &Mutable{
-		_x0:     i.Start().(Int),
-		_x1:     i.End().(Int),
-		Side: i.Side,
-		id:      i.id}
+		x0: Int(i.x0),
+		x1: Int(i.x1),
+		y:  Int(i.y),
+		r:  i.r,
+		id: i.id,
+	}
 }
 func (i Interval) String() string {
-	seg := "   (nil)    "
-	if i.Side != nil {
-		seg = fmt.Sprintf("%p[%g,%g)", i.Side, i.x0, i.x1)
+	direct := "horizontal"
+	if i.vertical {
+		direct = "vertical"
 	}
-	return fmt.Sprintf("%15s#%d", seg, i.id)
+	return fmt.Sprintf("INTERVAL{[%.1f,%.1f]%1f(%s)%T#%d}",
+		i.x0, i.x1, i.y, direct, i.r, i.id)
 }
 
 type Mutable struct {
-	_x0, _x1 Int
-	*Side
-	id uintptr
+	x0, x1, y Int
+	vertical  bool
+	id        uintptr
+	r         Rectilinear
 }
 
-func (m *Mutable) Start() interval.Comparable { return m._x0 }
-func (m *Mutable) End() interval.Comparable   { return m._x1 }
+func (m *Mutable) Start() interval.Comparable { return m.x0 }
+func (m *Mutable) End() interval.Comparable   { return m.x1 }
 func (m *Mutable) SetStart(c interval.Comparable) {
 	// common.Log.Info("Mutable.SetStart %g->%g", m.x0, float64(c.(Int)))
 	// if isZero(m.x0+3.55642) && isZero(float64(c.(Int))+8.3346) {
 	// 	panic("SetStart")
 	// }
-	m._x0 = c.(Int)
+	m.x0 = c.(Int)
 
 }
 func (m *Mutable) SetEnd(c interval.Comparable) {
 	// common.Log.Info("Mutable.SetEnd %g->%g", m.x1, float64(c.(Int)))
-	m._x1 = c.(Int)
+	m.x1 = c.(Int)
 }
 
 // func (t *interval.Tree) queryPoint(x float64, f func(h *Side)) {

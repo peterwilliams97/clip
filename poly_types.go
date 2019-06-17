@@ -15,15 +15,19 @@ import (
 
 */
 
+type Rectilinear interface {
+	X0X1YVert() (float64, float64, float64, bool)
+}
+
 // Vertex is a vertex on a rectilinear polygon.
 type Vertex struct {
 	Point
-	iPath   int     // Index of countour in polygon.
-	index   int     // Index of vertex in contour.
-	prev    *Vertex // Previous vertex in contour (or polygon?) !@#$
-	next    *Vertex // Next vertex in contour (or polygon?) !@#$
-	concave bool    // True if vertex is concave.
-	visited bool    // Does this belong here?
+	iContour int     // Index of countour in polygon.
+	index    int     // Index of vertex in contour.
+	prev     *Vertex // Previous vertex in contour (or polygon?) !@#$
+	next     *Vertex // Next vertex in contour (or polygon?) !@#$
+	concave  bool    // True if vertex is concave.
+	visited  bool    // Does this belong here?
 }
 
 func NewVertex(point Point, index int, prev, next *Vertex) *Vertex {
@@ -73,27 +77,33 @@ func (v *Vertex) Join(prev, next *Vertex) {
 // Side is a vertical or horizontal edge of a contour..
 type Side struct { // A side? !@#$
 	x0, x1       float64 // Start and end of the interval in the vertical or horizontal direction.
+	y            float64 // Coordinate in the other directon to x0, x1
 	start, end   *Vertex // Vertices at the start and end of the segment.
 	vertical     bool    // Is this a vertical segment?
 	number       int
 	pStart, pEnd Point
 }
 
-// func NewSeg(x0, x1 float64) *Side {
-// 	return &Side{x0: x0, x1: x1}
-// }
+func (s *Side) X0X1YVert() (x0, x1, y float64, vertical bool) {
+	return s.x0, s.x1, s.y, s.vertical
+}
 
-func newSide(start, end *Vertex, vertical bool) *Side {
+func newSide(start, end *Vertex) *Side {
 	start.Validate()
 	end.Validate()
+	if start.X == end.X && start.Y == end.Y {
+		panic("duplicate point")
+	}
+	if start.X != end.X && start.Y != end.Y {
+		panic("diagonal side")
+	}
+	vertical := start.X == end.X
 
-	var x0, x1 float64
+	var x0, x1, y float64
 	if vertical { // Why vertical -> X  ? !@#$ Seems to be consistently inverted.
-		x0 = start.Point.X
-		x1 = end.Point.X
+		x0, x1, y = start.X, end.X, start.Y
 	} else {
-		x0 = start.Point.Y
-		x1 = end.Point.Y
+		x0, x1, y = start.Y, end.Y, start.X
 	}
 	if x0 > x1 {
 		x0, x1 = x1, x0
@@ -105,6 +115,7 @@ func newSide(start, end *Vertex, vertical bool) *Side {
 	return &Side{
 		x0:       x0,
 		x1:       x1,
+		y:        y,
 		start:    start,
 		end:      end,
 		vertical: vertical,
@@ -114,16 +125,24 @@ func newSide(start, end *Vertex, vertical bool) *Side {
 	}
 }
 
-func vertexIndex(vertices []*Vertex, vtx *Vertex) int {
-	if len(vertices) == 0 {
-		return -1
+//   horizontal    vertical
+//    x0   x1           y
+//         |      x0    v
+//   y >---+            |
+//         |      x1 ---+----
+type Chord struct {
+	v *Vertex
+	s *Side
+}
+
+func (c *Chord) X0X1YVert() (x0, x1, y float64, vertical bool) {
+	vertical = !c.s.vertical
+	x0, y = c.v.X, c.v.Y
+	x1 = c.s.y
+	if x0 > x1 {
+		x0, x1 = x1, x0
 	}
-	for i, v := range vertices {
-		if v == vtx {
-			return i
-		}
-	}
-	return -1
+	return
 }
 
 // !@#$

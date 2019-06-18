@@ -286,8 +286,14 @@ vertices of a bipartite graph.
        +-------+
 
 ## References
+
+[Algorithm for finding the fewest rectangles to cover a set of rectangles without overlapping](https://stackoverflow.com/questions/5919298/algorithm-for-finding-the-fewest-rectangles-to-cover-a-set-of-rectangles-without)
+
 [Rectangular Decomposition of Binary Images](http://library.utia.cas.cz/separaty/2012/ZOI/suk-rectangular%20decomposition%20of%20binary%20images.pdf)
 Having a binary object B (by a binary object we understand a set of all pixels of a binary image whose values equal one), we decompose it into K ≥ 1 blocks B<sub>1</sub>,B<sub>2</sub>,.., B<sub>K</sub> such that B<sub>i</sub> ∩ B<sub>j</sub> = ∅ for any i !≠ j and B = ∪<sub>k=1..B</sub>(B<sub>k</sub>)
+
+[Fast Algorithms To Partition Simple Rectilinear Polygons](https://www.cise.ufl.edu/~sahni/papers/part.pdf)]
+_San-Yuan Wu and Sartaj Sahni_
 
 
 [Matching](https://en.wikipedia.org/wiki/Matching_\(graph_theory\)) A matching or independent edge set in a graph is a set of edges without common vertices.

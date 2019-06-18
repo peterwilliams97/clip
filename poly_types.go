@@ -28,6 +28,14 @@ func rectString(r Rectilinear) string {
 	return fmt.Sprintf("[%g,%g] %g %#q", x0, x1, y, direct)
 }
 
+func toLine(r Rectilinear) Line {
+	x0, x1, y, vertical := r.X0X1YVert()
+	if !vertical {
+		return Line{Point{y, x0}, Point{y, x1}}
+	}
+	return Line{Point{x0, y}, Point{x1, y}}
+}
+
 // Vertex is a vertex on a rectilinear polygon.
 type Vertex struct {
 	Point
@@ -163,8 +171,11 @@ type Chord struct {
 
 func (c *Chord) X0X1YVert() (x0, x1, y float64, vertical bool) {
 	vertical = !c.s.vertical
-	x0, y = c.v.X, c.v.Y
-	x1 = c.s.y
+	if vertical {
+		x0, x1, y = c.v.Y, c.s.start.Y, c.v.X
+	} else {
+		x0, x1, y = c.v.X, c.s.start.X, c.v.Y
+	}
 	if x0 > x1 {
 		x0, x1 = x1, x0
 	}

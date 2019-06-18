@@ -1,6 +1,7 @@
 package clip
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/biogo/store/interval"
@@ -58,8 +59,12 @@ func DecomposeRegion(polygon []Path, clockwise bool) []Rect {
 	hChords := getChords(vertices, contours, false, vTree)
 	vChords := getChords(vertices, contours, true, hTree)
 
-	// Find all splitting edges.
+	// Find the minimum set of splitting chords.
 	splitters := findMinimalChords(hChords, vChords)
+	common.Log.Info("**** splitters=%d", len(splitters))
+	for i, s := range splitters {
+		common.Log.Info("%6d %v", i, s)
+	}
 
 	// Cut all the splitting chords
 	for _, splitter := range splitters {
@@ -431,7 +436,7 @@ func findChord(vertex *Vertex, tree *IntervalTree, vertical, increasing bool) *C
 			closest = s
 			distance = dx
 		}
-		common.Log.Info(" query: r=%s x=%g xx=%g dx=%g distance=%g closest=%v",
+		common.Log.Debug(" query: r=%s x=%g xx=%g dx=%g distance=%g closest=%v",
 			rectString(s), x, xx, dx, distance, closest)
 		return false
 	})
@@ -440,7 +445,12 @@ func findChord(vertex *Vertex, tree *IntervalTree, vertical, increasing bool) *C
 		panic("no chords")
 		return nil
 	}
-	return &Chord{v: vertex, s: closest}
+	chord := Chord{v: vertex, s: closest}
+	x0, x1, _, _ := chord.X0X1YVert()
+	if x0 == x1 {
+		panic(fmt.Errorf("Bad chord: %s", chord))
+	}
+	return &chord
 }
 
 // testSide returns true if segment [v0,v1] intersects an existing segment.
@@ -479,8 +489,8 @@ func findMinimalChords(hChords, vChords []*Chord) []*Chord {
 
 	// Find independent set
 	hIndices, vIndices := bipartiteIndependentSet(len(hChords), len(vChords), edges)
-	common.Log.Info("hIndices=%d", len(hIndices))
-	common.Log.Info("vIndices=%d", len(vIndices))
+	common.Log.Info("***** hIndices=%d", len(hIndices))
+	common.Log.Info("***** vIndices=%d", len(vIndices))
 
 	// Convert into result format
 	result := make([]*Chord, len(hIndices)+len(vIndices))
@@ -502,20 +512,37 @@ type Crossing struct {
 
 // findCrossings returns the all intersections of horizontal and vertical chords.
 func findCrossings(hChords, vChords []*Chord) []Crossing {
-	// hTree := CreateIntervalTreeChords(hChords, "hChords")
+	common.Log.Info("================findCrossings")
+	common.Log.Info("  hChords=%d", len(hChords))
+	for i, c := range hChords {
+		common.Log.Info("%4d: %s", i, c)
+	}
+	common.Log.Info("  vChords=%d", len(vChords))
+	for i, c := range vChords {
+		common.Log.Info("%4d: %s", i, c)
+	}
+
+	vTree := CreateIntervalTreeChords(vChords, "vChords")
 	var crossings []Crossing
-	// for _, v := range vChords {
-	// 	// x := v.start.X
-	// 	// !@#$ hChords has to be verticals for this query to work!.
-	// 	// !@#$ Do the query!
-	// 	// hTree.QueryPoint(v.start.Y, func(h *Side) bool {
-	// 	// 	x := h.start.X
-	// 	// 	if v.x0 <= x && x <= v.x1 {
-	// 	// 		crossings = append(crossings, Crossing{h: h, v: v})
-	// 	// 	}
-	// 	// 	return false
-	// 	// })
-	// }
+	common.Log.Info("-----------------------")
+	for i, h := range hChords {
+		common.Log.Info("%4d: %s", i, h)
+		x0, x1, y, _ := h.X0X1YVert()
+		vTree.QueryPoint(y, func(r Rectilinear) bool {
+			_, _, x, _ := r.X0X1YVert()
+			v := r.(*Chord)
+			common.Log.Info("%8s %s %g<=%g<=%g=%t", "", v, x0, x, x1, x0 <= x && x <= x1)
+			if x0 <= x && x <= x1 {
+
+				crossings = append(crossings, Crossing{h: h, v: v})
+			}
+			return false
+		})
+	}
+	common.Log.Info("  crossings=%d", len(crossings))
+	for i, c := range crossings {
+		common.Log.Info("%4d: h=%v v=%v", i, *c.h, *c.v)
+	}
 	return crossings
 }
 
@@ -631,4 +658,3 @@ func findRegions(vertices []*Vertex) []Rect {
 	}
 	return rectangles
 }
-

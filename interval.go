@@ -121,19 +121,16 @@ func (tree *IntervalTree) Validate() {
 }
 
 func ValidateIntervals(intervals []*Interval) {
-	x0Counts := map[string]int{}
-	x1Counts := map[string]int{}
+	counts := map[string]int{}
 
 	for i, v := range intervals {
-		x0, x1 := v.Range()
-		x0 = integerize(x0)
-		x1 = integerize(x1)
-		y := integerize(v.y)
-		s0 := fmt.Sprintf("%.5f#%.5f", y, x0)
-		s1 := fmt.Sprintf("%.5f#%.5f", y, x1)
-		x0Counts[s0]++
-		x1Counts[s1]++
-		if x0Counts[s0] > 1 || x1Counts[s1] > 1 {
+		sig := rectString(v)
+		counts[sig]++
+		if counts[sig] > 1 {
+			common.Log.Error("-------------counts---------------")
+			for k, v := range counts {
+				common.Log.Error("%s: %d", k, v)
+			}
 			common.Log.Error("-------------&&&---------------")
 			for j, w := range intervals[:i+1] {
 				common.Log.Error("%4d: %s", j, w)

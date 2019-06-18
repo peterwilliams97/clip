@@ -26,18 +26,20 @@ func bipartiteIndependentSet(n, m int, edges [][2]int) ([]int, []int) {
 
 // complement returns [0:`n`) / `list`
 func complement(list []int, n int) []int {
+	common.Log.Info("complement: n=%d list=%d %v", n, len(list), list)
 	sort.Ints(list)
 
 	result := make([]int, n-len(list))
 	a, b := 0, 0
 	for i := 0; i < n; i++ {
-		if list[a] == i {
+		if len(list) > 0 && list[a] == i {
 			a++
 		} else {
 			result[b] = i
 			b++
 		}
 	}
+	common.Log.Info("complement: result=%d %v", len(result), result)
 	return result
 }
 
@@ -165,7 +167,10 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 //    One can prove that a matching is maximum if and only if it does not have any augmenting path.
 //      (This result is sometimes called Berge's lemma.)
 func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
-	common.Log.Debug("BipartiteMatching: n=%d m=%d\nedges=%d %v", n, m, len(edges), edges)
+	common.Log.Info("BipartiteMatching: n=%d m=%d\nedges=%d %v", n, m, len(edges), edges)
+	for i, e := range edges {
+		common.Log.Info("%6d: %v", i, e)
+	}
 	if len(edges) == 0 {
 		// panic("no edges")
 		return nil

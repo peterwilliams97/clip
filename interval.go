@@ -2,7 +2,6 @@ package clip
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/biogo/store/interval"
 	"github.com/unidoc/unipdf/common"
@@ -67,7 +66,7 @@ func CreateIntervalTreeSides(sides []*Side, name string) *IntervalTree {
 	for i, s := range sides {
 		rects[i] = s
 	}
-	return CreateIntervalTree(rects, name)
+	return createIntervalTree(rects, name)
 }
 
 func CreateIntervalTreeChords(chords []*Chord, name string) *IntervalTree {
@@ -75,7 +74,7 @@ func CreateIntervalTreeChords(chords []*Chord, name string) *IntervalTree {
 	for i, c := range chords {
 		rects[i] = c
 	}
-	return CreateIntervalTree(rects, name)
+	return createIntervalTree(rects, name)
 }
 
 func CreateIntervalTreeInterval(intervals []*Interval, name string) *IntervalTree {
@@ -83,22 +82,20 @@ func CreateIntervalTreeInterval(intervals []*Interval, name string) *IntervalTre
 	for i, iv := range intervals {
 		rects[i] = iv
 	}
-	return CreateIntervalTree(rects, name)
+	return createIntervalTree(rects, name)
 }
 
-func CreateIntervalTree(rects []Rectilinear, name string) *IntervalTree {
-	common.Log.Debug("CreateIntervalTree: %d %q", len(rects), name)
+func createIntervalTree(rects []Rectilinear, name string) *IntervalTree {
+	// common.Log.Info("createIntervalTree: %d %q", len(rects), name)
+	// for i, r := range rects {
+	// 	common.Log.Info("%d: %s", i, rectilinearToInterval(r))
+	// }
+	if len(rects) == 0 {
+		panic("createIntervalTree: empty")
+	}
 	tree := &IntervalTree{}
 	for _, r := range rects {
 		tree.Insert(r)
-		// sStart, sEnd := "(nil)", "(nil)"
-		// if s.start != nil {
-		// 	sStart = fmt.Sprintf("%+g", s.start.Point)
-		// }
-		// if s.end != nil {
-		// 	sEnd = fmt.Sprintf("%+g", s.end.Point)
-		// }
-		// common.Log.Debug("-- %d: %v=%s-%s tree=%v", i, s, sStart, sEnd, tree)
 	}
 	// This is critical!
 	t := (*interval.Tree)(tree)
@@ -124,22 +121,24 @@ func (tree *IntervalTree) Validate() {
 }
 
 func ValidateIntervals(intervals []*Interval) {
-	return
-	x0Counts := map[float64]int{}
-	x1Counts := map[float64]int{}
-	facX := 1e8
-	for i, iv := range intervals {
-		x0, x1 := iv.Range()
-		x0 = math.Round(x0*facX) / facX
-		x1 = math.Round(x1*facX) / facX
-		x0Counts[x0]++
-		x1Counts[x1]++
-		if x0Counts[x0] > 1 || x1Counts[x1] > 1 {
+	x0Counts := map[string]int{}
+	x1Counts := map[string]int{}
+
+	for i, v := range intervals {
+		x0, x1 := v.Range()
+		x0 = integerize(x0)
+		x1 = integerize(x1)
+		y := integerize(v.y)
+		s0 := fmt.Sprintf("%.5f#%.5f", y, x0)
+		s1 := fmt.Sprintf("%.5f#%.5f", y, x1)
+		x0Counts[s0]++
+		x1Counts[s1]++
+		if x0Counts[s0] > 1 || x1Counts[s1] > 1 {
 			common.Log.Error("-------------&&&---------------")
-			for j, jv := range intervals[:i+1] {
-				common.Log.Error("%4d: %s", j, jv)
+			for j, w := range intervals[:i+1] {
+				common.Log.Error("%4d: %s", j, w)
 			}
-			// panic(fmt.Errorf("Duplicate interval i=%d iv=%v", i, iv))
+			panic(fmt.Errorf("Duplicate interval i=%d v=%v", i, v))
 		}
 	}
 }
@@ -164,12 +163,12 @@ func (i *Interval) X0X1YVert() (x0, x1, y float64, vertical bool) {
 
 func (tree *IntervalTree) Insert(r Rectilinear) {
 	tree.Validate()
-	i := rectilinearToInterval(r)
+	v := rectilinearToInterval(r)
 	t := (*interval.Tree)(tree)
-	if err := t.Insert(i, true); err != nil {
+	if err := t.Insert(v, true); err != nil {
 		panic(fmt.Errorf("IntervalTree.Insert s=%v err=%v", r, err))
 	}
-	// common.Log.Info("Insert: s=%v->%v i=%v", d, *s, i)
+	// common.Log.Info("Insert: v=%v", v)
 	tree.Validate()
 	common.Log.Debug("treeInsert: %v r=%#v", tree, r)
 }
@@ -247,7 +246,7 @@ func (i Interval) String() string {
 	if i.vertical {
 		direct = "vertical"
 	}
-	return fmt.Sprintf("INTERVAL{[%.1f,%.1f]%1f(%s)%T#%d}",
+	return fmt.Sprintf("INTERVAL{[%.1f,%.1f]%.1f(%s)\n\t%#v#%d}",
 		i.x0, i.x1, i.y, direct, i.r, i.id)
 }
 

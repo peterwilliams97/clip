@@ -2,7 +2,6 @@ package clip
 
 import (
 	"math"
-	"sort"
 
 	"github.com/biogo/store/interval"
 	"github.com/unidoc/unipdf/common"
@@ -34,7 +33,7 @@ func DecomposeRegion(polygon []Path, clockwise bool) []Rect {
 		for j, v0 := range contour {
 			k := (j + 1) % len(contour)
 			v1 := contour[k]
-			common.Log.Info("j=%d k=%d\n\tv0=%v\n\tv1=%v", j, k, v0, v1)
+			common.Log.Debug("j=%d k=%d\n\tv0=%v\n\tv1=%v", j, k, v0, v1)
 			if v0.X == v1.X {
 				vSides = append(vSides, newSide(v0, v1))
 			} else {
@@ -316,13 +315,13 @@ func getChords(vertices []*Vertex, contours [][]*Vertex, vertical bool, tree *In
 		}
 	}
 
-	sort.Slice(concave, func(i, j int) bool {
-		vi, vj := concave[i], concave[j]
-		if vi.Cpt(vertical) != vj.Cpt(vertical) {
-			return vi.Cpt(vertical) < vj.Cpt(vertical)
-		}
-		return vi.Cpt(!vertical) < vj.Cpt(!vertical)
-	})
+	// sort.Slice(concave, func(i, j int) bool {
+	// 	vi, vj := concave[i], concave[j]
+	// 	if vi.Cpt(vertical) != vj.Cpt(vertical) {
+	// 		return vi.Cpt(vertical) < vj.Cpt(vertical)
+	// 	}
+	// 	return vi.Cpt(!vertical) < vj.Cpt(!vertical)
+	// })
 
 	common.Log.Info("concave=%d", len(concave))
 	for i, v := range concave {
@@ -348,8 +347,31 @@ func getChords(vertices []*Vertex, contours [][]*Vertex, vertical bool, tree *In
 	//        +->-+
 
 	var chords []*Chord
-	for i, a := range concave[:len(concave)-1] {
-		b := concave[i+1]
+	sigMap := map[string]struct{}{}
+	for i, v := range concave {
+		xp, xv, xn := v.prev.Cpt(vertical), v.Cpt(vertical), v.next.Cpt(vertical)
+		inwards := xp != xv
+		var increasing bool
+		if inwards {
+			increasing = xv > xp
+		} else {
+			increasing = xv > xn
+		}
+		common.Log.Info("orientation i=%d vertical=%t inwards=%t increasing=%t (%g %g %g)",
+			i, vertical, inwards, increasing, xp, xv, xn)
+		c := findChord(v, tree, vertical, increasing)
+		if c == nil {
+			continue
+		}
+		sig := rectString(c)
+		_, dup := sigMap[sig]
+		common.Log.Info("candidate i=%d dup=%5t %s", i, dup, c)
+		if dup {
+			continue
+		}
+		sigMap[sig] = struct{}{}
+		chords = append(chords, c)
+
 		// x0, x1 := minMax(a.Cpt(vertical), b.Cpt(vertical))
 		// search lower (higher) from x0 (x1)
 		// if vertical {
@@ -362,64 +384,60 @@ func getChords(vertices []*Vertex, contours [][]*Vertex, vertical bool, tree *In
 		// 	continue
 		// }
 
-		if a.iContour == b.iContour {
-			n := len(contours[a.iContour])
-			d := (a.index - b.index + n) % n
-			common.Log.Info("i=%d: n=%d d=%d", i, n, d)
-			if d == 1 || d == n-1 {
-				// Adjacent points
-				continue
-			}
-		}
-		if !testSide(a, b, tree, vertical) {
-			// Check orientation of diagonal
-			// !@#$ Find the chords!
-			// chords = append(chords, newSide(a, b, vertical))
-		}
+		// if a.iContour == b.iContour {
+		// 	n := len(contours[a.iContour])
+		// 	d := (a.index - b.index + n) % n
+		// 	common.Log.Info("i=%d: n=%d d=%d", i, n, d)
+		// 	if d == 1 || d == n-1 {
+		// 		// Adjacent points
+		// 		continue
+		// 	}
+		// }
+		// if !testSide(a, b, tree, vertical) {
+		// 	// Check orientation of diagonal
+		// 	// !@#$ Find the chords!
+		// 	// chords = append(chords, newSide(a, b, vertical))
+		// }
 
 	}
 	common.Log.Info("chords=%d", len(chords))
-	for i, s := range chords {
-		common.Log.Info("%4d: %v", i, s)
+	for i, c := range chords {
+		common.Log.Info("%4d: %s", i, c)
+	}
+	if len(chords) == 0 {
+		panic("no chords")
 	}
 	return chords
 }
 
-func minMax(x0, x1 float64) (float64, float64) {
-	if x0 < x1 {
-		return x0, x1
-	}
-	return x1, x0
-}
-
 // findChord returns the chord from the vertex
-func findChord(vertex *Vertex, tree IntervalTree, vertical, increasing bool) *Chord {
-	xx, yy := vertex.Point.Cpt(!vertical), vertex.Point.Cpt(vertical)
-	var distance float64
-	if increasing {
-		distance = infinity
-	} else {
-		distance = -infinity
-	}
+func findChord(vertex *Vertex, tree *IntervalTree, vertical, increasing bool) *Chord {
+	xx, yy := vertex.Point.Cpt(vertical), vertex.Point.Cpt(!vertical)
+	common.Log.Info("findChord: vertex=%v vertical=%t increasing=%t xx=%g yy=%g",
+		vertex.Point, vertical, increasing, xx, yy)
+
+	distance := infinity
 	var closest *Side
 	tree.QueryPoint(yy, func(r Rectilinear) bool {
 		s := r.(*Side)
-		x := s.start.Cpt(!vertical)
+		x := s.start.Cpt(vertical)
+		var dx float64
 		if increasing {
-			if x > xx && x-xx < distance {
-				closest = s
-				distance = x - xx
-			}
+			dx = x - xx
 		} else {
-			if x > xx && x-xx < distance {
-				closest = s
-				distance = x - xx
-			}
+			dx = xx - x
 		}
+		if 0 < dx && dx < distance {
+			closest = s
+			distance = dx
+		}
+		common.Log.Info(" query: r=%s x=%g xx=%g dx=%g distance=%g closest=%v",
+			rectString(s), x, xx, dx, distance, closest)
 		return false
 	})
 
 	if closest == nil {
+		panic("no chords")
 		return nil
 	}
 	return &Chord{v: vertex, s: closest}
@@ -613,3 +631,4 @@ func findRegions(vertices []*Vertex) []Rect {
 	}
 	return rectangles
 }
+

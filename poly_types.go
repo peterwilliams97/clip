@@ -19,6 +19,15 @@ type Rectilinear interface {
 	X0X1YVert() (float64, float64, float64, bool)
 }
 
+func rectString(r Rectilinear) string {
+	x0, x1, y, vertical := r.X0X1YVert()
+	direct := "horizontal"
+	if vertical {
+		direct = "vertical"
+	}
+	return fmt.Sprintf("[%g,%g] %g %#q", x0, x1, y, direct)
+}
+
 // Vertex is a vertex on a rectilinear polygon.
 type Vertex struct {
 	Point
@@ -160,6 +169,11 @@ func (c *Chord) X0X1YVert() (x0, x1, y float64, vertical bool) {
 		x0, x1 = x1, x0
 	}
 	return
+}
+
+func (c Chord) String() string {
+	return fmt.Sprintf("CHORD{%s v=%v s=%v %v}",
+		rectString(&c), c.v.Point, c.s.start.Point, c.s.end.Point)
 }
 
 // !@#$

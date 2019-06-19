@@ -29,6 +29,26 @@ func TestNDArray(t *testing.T) {
 	testTranspose(t, 1000, 10000, 1.0e-10)
 }
 
+func TestOpposite(t *testing.T) {
+	testOpposite(t, p(2, 2), p(2, 1), p(0, 2), p(3, 2))
+	testOpposite(t, p(1, 2), p(1, 1), p(0, 2), p(3, 2))
+	testOpposite(t, p(2, 2), p(1, 2), p(2, 0), p(2, 3))
+	testOpposite(t, p(2, 1), p(1, 1), p(2, 0), p(2, 3))
+}
+
+func p(x, y float64) clip.Point {
+	return clip.Point{x, y}
+}
+
+func testOpposite(t *testing.T, e, v, s0, s1 clip.Point) {
+	c := clip.NewChord(v, clip.Line{s0, s1})
+	o := c.OtherEnd()
+	common.Log.Debug("c=%v -> opposite=%v", c, o)
+	if !o.Equals(e) {
+		t.Fatalf("got %v expected %v\n\tc=%v", o, e, c)
+	}
+}
+
 func testArray(t *testing.T, h, w int, fac float64) {
 	m := clip.CreateNDArray(h, w)
 	count := 0

@@ -289,7 +289,21 @@ vertices of a bipartite graph.
 
 [Algorithm for finding the fewest rectangles to cover a set of rectangles without overlapping](https://stackoverflow.com/questions/5919298/algorithm-for-finding-the-fewest-rectangles-to-cover-a-set-of-rectangles-without)
 
+_The idea is to find the maximum number of disjoint axis-parallel diagonals that have two concave vertices as endpoints, split along those, and then form one more split for each remaining concave vertex. To find the maximum number of disjoint axis-parallel diagonals, form the intersection graph of the diagonals; this graph is bipartite so its maximum independent set can be found in polynomial time by graph matching techniques._
+
+[Graph-Theoretic Solutions to Computational Geometry Problems](https://arxiv.org/pdf/0908.3916.pdf)
+_David Eppstein_
+
+[FINDING A MANHATTAN PATH AND RELATED PROBLEMS] (https://www.ideals.illinois.edu/bitstream/handle/2142/74073/B23-85.pdf?sequence=5)
+_Witold Lipski, Jr._
+*Interval trees*
+
+[EFFICIENT ALGORITHMS FOR GEOMETRIC GRAPH SEARCH PROBLEMS](https://pdfs.semanticscholar.org/854c/b8c4e1c75ffef990d3fdacfe8ff0a24e5bc7.pdf)
+_HIROSHI IMAV AND TAKAO ASANO_
+
+
 [Rectangular Decomposition of Binary Images](http://library.utia.cas.cz/separaty/2012/ZOI/suk-rectangular%20decomposition%20of%20binary%20images.pdf)
+
 Having a binary object B (by a binary object we understand a set of all pixels of a binary image whose values equal one), we decompose it into K ≥ 1 blocks B<sub>1</sub>,B<sub>2</sub>,.., B<sub>K</sub> such that B<sub>i</sub> ∩ B<sub>j</sub> = ∅ for any i !≠ j and B = ∪<sub>k=1..B</sub>(B<sub>k</sub>)
 
 [Fast Algorithms To Partition Simple Rectilinear Polygons](https://www.cise.ufl.edu/~sahni/papers/part.pdf)]

@@ -231,7 +231,7 @@ func (c *Chord) OtherEnd() Point {
 func (c *Chord) Intersects(s *Side) bool {
 	vertical := !c.s.vertical
 	if vertical == s.vertical {
-		panic("c is parallel to s")
+		return false
 	}
 	var x0, x1, y float64
 	var sx, sy0, sy1 float64

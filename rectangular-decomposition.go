@@ -36,9 +36,9 @@ func DecomposeRegion(polygon []Path, clockwise bool) []Rect {
 			v1 := contour[k]
 			common.Log.Debug("j=%d k=%d\n\tv0=%v\n\tv1=%v", j, k, v0, v1)
 			if v0.X == v1.X {
-				vSides = append(vSides, newSide(v0, v1))
+				vSides = append(vSides, NewSide(v0, v1))
 			} else {
-				hSides = append(hSides, newSide(v0, v1))
+				hSides = append(hSides, NewSide(v0, v1))
 			}
 			if clockwise {
 				v0.prev, v1.next = v1, v0
@@ -62,20 +62,28 @@ func DecomposeRegion(polygon []Path, clockwise bool) []Rect {
 	// Find the minimum set of splitting chords.
 	splitters := findMinimalChords(hChords, vChords)
 	common.Log.Info("**** splitters=%d", len(splitters))
-	for i, s := range splitters {
-		common.Log.Info("%6d %v", i, s)
+	for i, c := range splitters {
+		common.Log.Info("%6d: %v other=%v", i, c, c.OtherEnd())
 	}
+
+	contours[0] = divideRectangles(contours[0], splitters)
+	vertices = contours[0]
 
 	// Cut all the splitting chords
-	for _, splitter := range splitters {
-		splitSide(splitter)
-	}
+	// for _, splitter := range splitters {
+	// 	splitSide(splitter)
+	// }
 
 	// Split all concave vertices
-	splitConcave(vertices)
+	// splitConcave(vertices)
 
 	// Return regions
-	return findRegions(vertices)
+	rectangles := findRegions(vertices)
+	common.Log.Info("*** %d rectangles", len(rectangles))
+	for i, r := range rectangles {
+		common.Log.Info("%6d: %v", i, r)
+	}
+	return rectangles
 }
 
 // asVertices returns `polygon` in our internal format, a slice of vertices.
@@ -151,9 +159,9 @@ func splitConcave(vertices []*Vertex) {
 		common.Log.Debug("\t%3d: %+v", i, v)
 		if v.next.X == v.X {
 			if v.next.Y < v.Y { // ^
-				upVSides = append(upVSides, newSide(v, v.next))
+				upVSides = append(upVSides, NewSide(v, v.next))
 			} else { //            v
-				downVSides = append(downVSides, newSide(v, v.next))
+				downVSides = append(downVSides, NewSide(v, v.next))
 			}
 		}
 	}
@@ -275,8 +283,8 @@ func splitConcave(vertices []*Vertex) {
 			tree = upVTree
 		}
 		tree.Delete(closestSide)
-		tree.Insert(newSide(closestSide.start, splitA))
-		tree.Insert(newSide(splitB, closestSide.end))
+		tree.Insert(NewSide(closestSide.start, splitA))
+		tree.Insert(NewSide(splitB, closestSide.end))
 
 		// Append vertices
 		vertices = append(vertices, splitA, splitB)
@@ -310,7 +318,7 @@ func splitConcave(vertices []*Vertex) {
 
 // getChords returns the chords off concave vertices in `vertices`.
 func getChords(vertices []*Vertex, contours [][]*Vertex, vertical bool, tree *IntervalTree) []*Chord {
-	common.Log.Info("getChords: vertices=%d vertical=%t", len(vertices), vertical)
+	common.Log.Info("getChords: vertices=%d %s", len(vertices), directionName(vertical))
 
 	var concave []*Vertex
 	for _, v := range vertices {
@@ -362,8 +370,8 @@ func getChords(vertices []*Vertex, contours [][]*Vertex, vertical bool, tree *In
 		} else {
 			increasing = xv > xn
 		}
-		common.Log.Info("orientation i=%d vertical=%t inwards=%t increasing=%t (%g %g %g)",
-			i, vertical, inwards, increasing, xp, xv, xn)
+		common.Log.Info("orientation i=%d %s inwards=%t increasing=%t (%g %g %g)",
+			i, directionName(vertical), inwards, increasing, xp, xv, xn)
 		c := findChord(v, tree, vertical, increasing)
 		if c == nil {
 			continue
@@ -401,7 +409,7 @@ func getChords(vertices []*Vertex, contours [][]*Vertex, vertical bool, tree *In
 		// if !testSide(a, b, tree, vertical) {
 		// 	// Check orientation of diagonal
 		// 	// !@#$ Find the chords!
-		// 	// chords = append(chords, newSide(a, b, vertical))
+		// 	// chords = append(chords, NewSide(a, b, vertical))
 		// }
 
 	}
@@ -418,8 +426,8 @@ func getChords(vertices []*Vertex, contours [][]*Vertex, vertical bool, tree *In
 // findChord returns the chord from the vertex
 func findChord(vertex *Vertex, tree *IntervalTree, vertical, increasing bool) *Chord {
 	xx, yy := vertex.Point.Cpt(vertical), vertex.Point.Cpt(!vertical)
-	common.Log.Info("findChord: vertex=%v vertical=%t increasing=%t xx=%g yy=%g",
-		vertex.Point, vertical, increasing, xx, yy)
+	common.Log.Info("findChord: vertex=%v %s increasing=%t xx=%g yy=%g",
+		vertex.Point, directionName(vertical), increasing, xx, yy)
 
 	distance := infinity
 	var closest *Side
@@ -458,8 +466,8 @@ func testSide(v0, v1 *Vertex, tree *IntervalTree, vertical bool) bool {
 	iv := newInterval(v0, v1, vertical)
 	t := (*interval.Tree)(tree)
 	matches := t.Get(iv)
-	common.Log.Info("testSide: iv=%v vertical=%t tree=%v matches=%d\n\tv0=%v\n\tv1=%v",
-		iv, vertical, tree, matches, v0, v1)
+	common.Log.Info("testSide: iv=%v %s tree=%v matches=%d\n\tv0=%v\n\tv1=%v",
+		iv, directionName(vertical), tree, matches, v0, v1)
 	return len(matches) > 0
 }
 
@@ -544,6 +552,255 @@ func findCrossings(hChords, vChords []*Chord) []Crossing {
 		common.Log.Info("%4d: h=%v v=%v", i, *c.h, *c.v)
 	}
 	return crossings
+}
+
+func divideRectangles(contour []*Vertex, chords []*Chord) []*Vertex {
+	common.Log.Info("divideRectangles: contour=%d chords=%d", len(contour), len(chords))
+	var diagonals [][2]int
+	for i, c := range chords {
+		k := findOpposite(contour, c)
+		common.Log.Info("  findOpposite(%s) -> %d", c, k)
+		if k < 0 {
+			continue
+		}
+		contour[k].visited = true
+		diagonals = append(diagonals, [2]int{i, k})
+	}
+
+	common.Log.Info("diagonals=%d", len(diagonals))
+	for i, diag := range diagonals {
+		common.Log.Info("%6d: %v", i, diag)
+	}
+
+	var intersections [][3]int
+	for i, c := range chords {
+		k0, k1 := findIntersection(contour, c)
+		common.Log.Info("  findIntersection(%s) -> %d %d", c, k0, k1)
+		if k0 < 0 {
+			continue
+		}
+		contour[k0].visited = true
+		intersections = append(intersections, [3]int{i, k0, k1})
+	}
+
+	common.Log.Info("intersections=%d", len(intersections))
+	for i, x := range intersections {
+		c := chords[x[0]]
+		v0, v1 := contour[x[1]], contour[x[2]]
+		common.Log.Info("%6d: %v %v intersects %v-%v ", i, x[1:], c, v0.Point, v1.Point)
+	}
+
+	var additions []*Vertex
+	removals := map[int]struct{}{}
+	for _, diag := range diagonals {
+		adds := splitDiagonal(contour, diag[0], diag[1])
+		additions = append(additions, adds...)
+		removals[diag[0]] = struct{}{}
+		removals[diag[1]] = struct{}{}
+	}
+
+	adds, rems := splitIntersections(contour, intersections)
+	additions = append(additions, adds...)
+	common.Log.Info("adds=%d", len(adds))
+	for i, v := range adds {
+		common.Log.Info("%6d: %v", i, v)
+	}
+	for _, i := range rems {
+		removals[i] = struct{}{}
+	}
+
+	var newContour []*Vertex
+	for i, v := range contour {
+		if _, remove := removals[i]; !remove {
+			newContour = append(newContour, v)
+		}
+	}
+	newContour = append(newContour, additions...)
+	common.Log.Info("*** newContour: %d ", len(newContour))
+	for i, v := range newContour {
+		common.Log.Info("%6d: %v", i, v)
+	}
+
+	return newContour
+}
+
+func splitDiagonal(contour []*Vertex, i0, i1 int) []*Vertex {
+	common.Log.Info("splitDiagonal: %d vertices i0=%d i1=%d", len(contour), i0, i1)
+	v0 := contour[i0]
+	v1 := contour[i1]
+	if i1 <= i0 {
+		panic("wrong order")
+	}
+
+	if v0.index > v1.index {
+		v0, v1 = v1, v0
+	}
+
+	//        +---+
+	//      v1| a |v0
+	//    +-<-+···+-<-+
+	//    |     b     |
+	//    +-----------+
+	a0, a1 := &(*v0), &(*v1)
+	a1.next = a0
+	a0.prev = a1
+	a1.prev.next = a1
+	a0.next.prev = a0
+
+	b0, b1 := &(*v0), &(*v1)
+	b0.next = b1
+	b1.prev = b0
+	b0.prev.next = b0
+	b1.next.prev = b1
+
+	return []*Vertex{a0, a1, b0, b1}
+}
+
+func splitIntersections(contour []*Vertex, intersections [][3]int) ([]*Vertex, []int) {
+	common.Log.Info("splitIntersections: %d vertices %d intersections",
+		len(contour), len(intersections))
+	bySide := map[string][][3]int{}
+	for _, x := range intersections {
+		side := fmt.Sprintf("%d#%d", x[1], x[2])
+		bySide[side] = append(bySide[side], x)
+	}
+
+	var additions []*Vertex
+	var removals []int
+	for _, xList := range bySide {
+		var icList []int
+		for _, x := range xList {
+			icList = append(icList, x[0])
+		}
+		i0 := xList[0][1]
+		i1 := xList[0][2]
+		adds := splitChords(contour, icList, i0, i1)
+		additions = append(additions, adds...)
+		removals = append(removals, icList...)
+	}
+	return additions, removals
+
+}
+func splitChords(contour []*Vertex, icList []int, i0, i1 int) []*Vertex {
+	common.Log.Info("splitChord: %d vertices ic=%d %v i0=%d i1=%d",
+		len(contour), len(icList), icList, i0, i1)
+
+	e0 := contour[i0]
+	e1 := contour[i1]
+	if i1 <= i0 {
+		panic("wrong order")
+	}
+	if e0.next != e1 || e1.prev != e0 {
+		common.Log.Error("Not a side\n\te0=%p %#v\n\te1=%p %#v", e0, *e0, e1, *e1)
+		panic("not side")
+	}
+	if e0.Point.Equals(e1.Point) {
+		panic("duplicate vertex")
+	}
+	var additions []*Vertex
+	for _, ic := range icList {
+		adds := splitOnChord(contour, ic, e0, e1)
+		additions = append(additions, adds...)
+	}
+	return additions
+}
+func splitOnChord(contour []*Vertex, ic int, e0, e1 *Vertex) []*Vertex {
+	v0 := contour[ic]
+	// Add vertex v1 that splits e0 and e1
+	v1 := &Vertex{
+		prev: e0,
+		next: e1,
+	}
+	e0.next = v1
+	e1.prev = v1
+
+	vertical := e0.X == e1.X
+	if vertical {
+		v1.X = e0.X
+		v1.Y = integerize(0.5 * (e0.Y + e1.Y))
+	} else {
+		v1.X = integerize(0.5 * (e0.X + e1.X))
+		v1.Y = e0.Y
+	}
+
+	//        +-<-+
+	//     v0 |   |
+	//    +-<-+ b |    top
+	//    | a :   |
+	//    +-------+    bottom
+	//  e0    v1    e1
+	a0, a1 := cv(v0), cv(v1)
+	if a0 == v0 || a1 == v1 {
+		panic("didn't copy a")
+	}
+	a1.next = a0
+	a0.prev = a1
+	a1.prev.next = a1
+	a0.next.prev = a0
+
+	b0, b1 := cv(v0), cv(v1)
+	if b0 == v0 || b1 == v1 {
+		panic("didn't copy b")
+	}
+	b0.next = b1
+	b1.prev = b0
+	b0.prev.next = b0
+	b1.next.prev = b1
+
+	common.Log.Info("v1=%s", v1)
+	if v1.prev.Point.Equals(v1.next.Point) {
+		common.Log.Error("bad v1\n\t%v\n\t%#v", *v1, *v1)
+		panic("wrong points")
+	}
+
+	return []*Vertex{v1, a0, a1, b0, b1}
+}
+
+func cv(v *Vertex) *Vertex {
+	w := *v
+	return &w
+}
+
+// findOpposite returns axis-parallel diagonals
+// !@#$ replace with efficient version
+func findOpposite(contour []*Vertex, c *Chord) int {
+	o := c.OtherEnd()
+	// common.Log.Info("findOpposite: c=%s other=%v", c, o)
+	for i, v := range contour {
+		m := v.Point.Equals(o)
+		// common.Log.Info("  i=%d v=%v visited=%5t match=%t", i, v.Point, v.visited, m)
+		if v.visited {
+			continue
+		}
+		if m {
+			return i
+		}
+	}
+	// panic("no opposite")
+	return -1
+}
+
+func findIntersection(contour []*Vertex, c *Chord) (i0, i1 int) {
+	// common.Log.Info("findIntersection: c=%s", c)
+	for i0, v0 := range contour {
+		i1 := (i0 + 1) % len(contour)
+		v1 := contour[i1]
+		if v0.Point.Equals(c.v.Point) || v1.Equals(c.v.Point) {
+			continue
+		}
+		s := NewSide(v0, v1)
+		m := c.Intersects(s)
+		// common.Log.Info("  i0=%d i1=%d v0=%v v1=%v visited=%5t match=%t",
+		// 	i0, i1, v0.Point, v1.Point, v0.visited, m)
+		// // if v0.visited {
+		// // 	continue
+		// // }
+		if m {
+			return i0, i1
+		}
+	}
+	// panic("no intersection")
+	return -1, -1
 }
 
 func splitSide(chord *Chord) {
@@ -634,8 +891,8 @@ func findRegions(vertices []*Vertex) []Rect {
 	// Walk over vertex list
 	var rectangles []Rect
 	var count int
-	for i := 0; i < n; i++ {
-		v := vertices[i]
+	for i, v := range vertices {
+		common.Log.Info("i=%d: v=%s", i, v)
 		if v.visited {
 			continue
 		}
@@ -643,18 +900,17 @@ func findRegions(vertices []*Vertex) []Rect {
 		lo := Point{infinity, infinity}
 		hi := Point{-infinity, -infinity}
 		for ; !v.visited; v = v.next {
-			p := v.Point
-			lo.X = math.Min(p.X, lo.X)
-			hi.X = math.Max(p.X, hi.X)
-			lo.Y = math.Min(p.Y, lo.Y)
-			hi.Y = math.Max(p.Y, hi.Y)
+			lo.X = math.Min(v.X, lo.X)
+			hi.X = math.Max(v.X, hi.X)
+			lo.Y = math.Min(v.Y, lo.Y)
+			hi.Y = math.Max(v.Y, hi.Y)
 			v.visited = true
-			common.Log.Info("visit %d %p %v %v %v", count, v, *v, lo, hi)
+			common.Log.Info(" visit %d:  %s %v %v", count, *v, lo, hi)
 			count++
 		}
 		r := Rect{Llx: lo.X, Lly: lo.Y, Urx: hi.X, Ury: hi.Y}
 		rectangles = append(rectangles, r)
-		common.Log.Info("%4d %d: %+v", i, len(rectangles)-1, r)
+		common.Log.Info("i=%d: %d rectangles: %+v", i, len(rectangles)-1, r)
 	}
 	return rectangles
 }

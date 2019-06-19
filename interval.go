@@ -57,7 +57,7 @@ func (i Interval) Range() (float64, float64) {
 }
 
 func newInterval(v0, v1 *Vertex, vertical bool) Interval {
-	s := newSide(v0, v1)
+	s := NewSide(v0, v1)
 	return rectilinearToInterval(s)
 }
 

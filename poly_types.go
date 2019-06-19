@@ -117,7 +117,7 @@ func (s *Side) X0X1YVert() (x0, x1, y float64, vertical bool) {
 	return s.x0, s.x1, s.y, s.vertical
 }
 
-func newSide(start, end *Vertex) *Side {
+func NewSide(start, end *Vertex) *Side {
 	start.Validate()
 	end.Validate()
 	if start.X == end.X && start.Y == end.Y {
@@ -182,6 +182,11 @@ type Chord struct {
 	s *Side
 }
 
+func (c Chord) String() string {
+	return fmt.Sprintf("CHORD{%s v=%v s=%v %v}",
+		rectString(&c), c.v.Point, c.s.start.Point, c.s.end.Point)
+}
+
 // !@#$ For testing
 func NewChord(v Point, s Line) *Chord {
 	vert := s.A.X == s.B.X
@@ -192,7 +197,7 @@ func NewChord(v Point, s Line) *Chord {
 
 	return &Chord{
 		v: &Vertex{Point: v},
-		s: newSide(&Vertex{Point: s.A}, &Vertex{Point: s.B}),
+		s: NewSide(&Vertex{Point: s.A}, &Vertex{Point: s.B}),
 	}
 }
 
@@ -222,9 +227,28 @@ func (c *Chord) OtherEnd() Point {
 	return Point{c.s.start.X, c.v.Y}
 }
 
-func (c Chord) String() string {
-	return fmt.Sprintf("CHORD{%s v=%v s=%v %v}",
-		rectString(&c), c.v.Point, c.s.start.Point, c.s.end.Point)
+// Intersects returns true if `c` intersects `s`.
+func (c *Chord) Intersects(s *Side) bool {
+	vertical := !c.s.vertical
+	if vertical == s.vertical {
+		panic("c is parallel to s")
+	}
+	var x0, x1, y float64
+	var sx, sy0, sy1 float64
+	if vertical {
+		x0, x1, y = c.v.Y, c.s.start.Y, c.v.X
+		sx, sy0, sy1 = s.start.Y, s.start.X, s.end.X
+	} else {
+		x0, x1, y = c.v.X, c.s.start.X, c.v.Y
+		sx, sy0, sy1 = s.start.X, s.start.Y, s.end.Y
+	}
+	if x0 > x1 {
+		x0, x1 = x1, x0
+	}
+	if sy0 > sy1 {
+		sy0, sy1 = sy1, sy0
+	}
+	return x0 <= sx && sx <= x1 && sy0 <= y && y <= sy1
 }
 
 // !@#$

@@ -29,11 +29,15 @@ func TestNDArray(t *testing.T) {
 	testTranspose(t, 1000, 10000, 1.0e-10)
 }
 
-func TestOpposite(t *testing.T) {
+func TestChords(t *testing.T) {
 	testOpposite(t, p(2, 2), p(2, 1), p(0, 2), p(3, 2))
 	testOpposite(t, p(1, 2), p(1, 1), p(0, 2), p(3, 2))
 	testOpposite(t, p(2, 2), p(1, 2), p(2, 0), p(2, 3))
 	testOpposite(t, p(2, 1), p(1, 1), p(2, 0), p(2, 3))
+	testIntersects(t, true, p(1, 1), p(2, 0), p(2, 3), p(2, 0), p(2, 3))
+	testIntersects(t, true, p(1, 1), p(4, 0), p(4, 3), p(2, 0), p(2, 3))
+	testIntersects(t, false, p(1, 1), p(4, 0), p(4, 3), p(5, 0), p(5, 3))
+	testIntersects(t, false, p(1, 1), p(4, 0), p(4, 3), p(2, 4), p(2, 6))
 }
 
 func p(x, y float64) clip.Point {
@@ -46,6 +50,16 @@ func testOpposite(t *testing.T, e, v, s0, s1 clip.Point) {
 	common.Log.Debug("c=%v -> opposite=%v", c, o)
 	if !o.Equals(e) {
 		t.Fatalf("got %v expected %v\n\tc=%v", o, e, c)
+	}
+}
+
+func testIntersects(t *testing.T, e bool, v, s0, s1, l0, l1 clip.Point) {
+	c := clip.NewChord(v, clip.Line{s0, s1})
+	l := clip.NewSide(&clip.Vertex{Point: l0}, &clip.Vertex{Point: l1})
+	i := c.Intersects(l)
+	common.Log.Debug("c=%v l=%v-> intersects=%t", c, l, i)
+	if i != e {
+		t.Fatalf("got %t expected %t\n\tc=%v\n\tl=%v", i, e, c, l)
 	}
 }
 

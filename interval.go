@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/biogo/store/interval"
-	"github.com/unidoc/unipdf/common"
+	"github.com/unidoc/unipdf/v3/common"
 )
 
 // Generic intervals

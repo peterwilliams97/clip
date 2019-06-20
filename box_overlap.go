@@ -4,7 +4,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/unidoc/unipdf/common"
+	"github.com/unidoc/unipdf/v3/common"
 )
 
 // Overlap describes the overlap of 2 Rects in a slice.

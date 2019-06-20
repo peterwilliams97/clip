@@ -5,7 +5,7 @@ import (
 	"math"
 
 	"github.com/biogo/store/interval"
-	"github.com/unidoc/unipdf/common"
+	"github.com/unidoc/unipdf/v3/common"
 )
 
 // DecomposeRegion breaks rectilinear polygon `polygon` into non-overlapping rectangles.
@@ -842,7 +842,7 @@ func findOpposite(contour []*Vertex, c *Chord) int {
 }
 
 // findIntersection returns the side of `contour` intersected by `c`.
-func findIntersection(contour []*Vertex, c *Chord) (v0, e0, e1 *Vertex) {
+func findIntersection(contour []*Vertex, c *Chord) (p Point, e0, e1 *Vertex) {
 	// common.Log.Info("findIntersection: c=%s", c)
 	// n := len(contour)
 	v :=  c.v

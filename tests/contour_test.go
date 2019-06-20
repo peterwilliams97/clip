@@ -3,7 +3,7 @@ package clip_test
 import (
 	"testing"
 
-	"github.com/unidoc/unipdf/common"
+	"github.com/unidoc/unipdf/v3/common"
 
 	"github.com/peterwilliams97/clip"
 )

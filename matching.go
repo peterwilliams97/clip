@@ -3,7 +3,7 @@ package clip
 import (
 	"sort"
 
-	"github.com/unidoc/unipdf/common"
+	"github.com/unidoc/unipdf/v3/common"
 )
 
 // bipartiteIndependentSet computes a maximum independent set for a bipartite graph.

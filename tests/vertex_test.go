@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/peterwilliams97/clip"
-	"github.com/unidoc/unipdf/common"
+	"github.com/unidoc/unipdf/v3/common"
 )
 
 func TestVertex(t *testing.T) {

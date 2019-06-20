@@ -51,6 +51,17 @@ func NewIntv(x0, x1 float64) *Interval {
 
 }
 
+func (i *Interval) X0X1YVert() (x0, x1, y float64, vertical bool) {
+	// common.Log.Info("Interval.X0X1YVert: %v", i)
+	return i.x0, i.x1, i.y, i.vertical
+}
+
+func (i Interval) String() string {
+	s := rectString(&i)
+	return fmt.Sprintf("INTERVAL{%s %T %v}", s, i.r, i.r)
+	// i.x0, i.x1, i.y, directionName(i.vertical), i.r, i.id)
+}
+
 // Range returns the ends of the interval
 func (i Interval) Range() (float64, float64) {
 	return i.x0, i.x1
@@ -133,8 +144,12 @@ func ValidateIntervals(intervals []*Interval) {
 			}
 			common.Log.Error("-------------&&&---------------")
 			for j, w := range intervals[:i+1] {
-				common.Log.Error("%4d: %s", j, w)
+				common.Log.Error("%4d: %T %s %v", j, w.r, rectString(v), w.r)
 			}
+			// common.Log.Error("-------------$$$---------------")
+			// for j, w := range intervals[:i+1] {
+			// 	common.Log.Error("%4d: %s", j, *w)
+			// }
 			panic(fmt.Errorf("Duplicate interval i=%d v=%v", i, v))
 		}
 	}
@@ -151,11 +166,6 @@ func rectilinearToInterval(r Rectilinear) Interval {
 		r:        r,
 		id:       idCounter, // counter has effect
 	}
-}
-
-func (i *Interval) X0X1YVert() (x0, x1, y float64, vertical bool) {
-	// common.Log.Info("Interval.X0X1YVert: %v", i)
-	return i.x0, i.x1, i.y, i.vertical
 }
 
 func (tree *IntervalTree) Insert(r Rectilinear) {
@@ -237,14 +247,6 @@ func (i Interval) NewMutable() interval.Mutable {
 		r:  i.r,
 		id: i.id,
 	}
-}
-func (i Interval) String() string {
-	direct := "horizontal"
-	if i.vertical {
-		direct = "vertical"
-	}
-	return fmt.Sprintf("INTERVAL{[%.1f,%.1f]%.1f(%s)\n\t%#v#%d}",
-		i.x0, i.x1, i.y, direct, i.r, i.id)
 }
 
 type Mutable struct {

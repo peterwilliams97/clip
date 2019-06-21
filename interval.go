@@ -155,6 +155,20 @@ func ValidateIntervals(intervals []*Interval) {
 	}
 }
 
+func RemoveDuplicateIntervals(intervals []*Interval) []*Interval {
+	counts := map[string]int{}
+	var clean []*Interval
+	for _, v := range intervals {
+		sig := rectString(v)
+		counts[sig]++
+		if counts[sig] > 1 {
+			continue
+		}
+		clean = append(clean, v)
+	}
+	return clean
+}
+
 func rectilinearToInterval(r Rectilinear) Interval {
 	idCounter++ // !@#$ Critical for passing tests
 	x0, x1, y, vertical := r.X0X1YVert()

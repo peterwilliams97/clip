@@ -12,9 +12,9 @@ import (
 
 func TestStartEndInterval(t *testing.T) {
 	randoo = newRando(1, 5)
-	for i := 0; i <= 50; i++ {
-		for n := 0; n <= i; n++ {
-			// common.Log.Info("TestStartInterval: n=%d", n)
+	for i := 0; i <= 50; i += 5 {
+		common.Log.Info("TestStartInterval: i=%d", i)
+		for n := 0; n <= i; n += 3 {
 			for k := 1; k <= 10; k++ {
 				testIntervalEnds(t, 0, 1, n)
 				testIntervalEnds(t, -1, 1, n)
@@ -31,6 +31,8 @@ func testIntervalEnds(t *testing.T, x0, x1 float64, n int) {
 	intervals := makeIntervals(n)
 	iv := clip.NewIntv(x0, x1)
 	intervals = append(intervals, iv)
+	intervals = clip.RemoveDuplicateIntervals(intervals)
+
 	tree := createTree(intervals)
 	testPoint(t, tree, intervals, x0)
 	testPoint(t, tree, intervals, x1)
@@ -41,19 +43,27 @@ func testIntervalEnds(t *testing.T, x0, x1 float64, n int) {
 }
 
 // TestIntervals runs testPoint on some random intervals.
-func TestInterval(t *testing.T) {
+func TestIntervals(t *testing.T) {
+	common.Log.Info("TestIntervals")
 	count := 0
 	for m := 1; m <= 51; m += 11 {
 		randoo = newRando(-1, float64(m))
-		for k := 1; k <= 51; k += 9 {
-			// common.Log.Info("==============*****================")
+		for k := m; k <= 51; k += 17 {
+			numIntervals := k * m
+			n := 3
+			if numIntervals > 1000 {
+				n = 1
+			} else if numIntervals > 100 {
+				n = 2
+			}
+			common.Log.Info("TestIntervals: k=%d n=%d km=%d", k, n, k*m)
 
-			var points []float64
+			points := make([]float64, 0, numIntervals*2+10)
 
-			for j := 0; j < 2; j++ {
+			for j := 0; j < n; j++ {
 				points = []float64{1, -1, float64(clip.MinInt), float64(clip.MaxInt)}
 
-				intervals := makeIntervals(k * m)
+				intervals := makeIntervals(numIntervals)
 				validateIntervals(intervals)
 				tree := createTree(intervals)
 				validateIntervals(intervals)
@@ -150,6 +160,7 @@ func makeIntervals(n int) []*clip.Interval {
 		iv := clip.NewIntv(x0, x1)
 		intervals = append(intervals, iv)
 	}
+	intervals = clip.RemoveDuplicateIntervals(intervals)
 	validateIntervals(intervals)
 	return intervals
 }
@@ -217,24 +228,6 @@ func sortIntervals(intervals []*clip.Interval) {
 
 func validateIntervals(intervals []*clip.Interval) {
 	clip.ValidateIntervals(intervals)
-	// x0Counts := map[float64]int{}
-	// x1Counts := map[float64]int{}
-	// facX := fac * 100.0
-	// for i, iv := range intervals {
-	// x0, x1 := iv.Range()
-	// x0 = math.Round(x0*facX) / facX
-	// x1 = math.Round(x1*facX) / facX
-	// x0Counts[x0]++
-	// x1Counts[x1]++
-	// if x0Counts[x0] > 1 || x1Counts[x1] > 1 {
-	// 	common.Log.Error("-----------------------------")
-	// 	for j, jv := range intervals[:i+1] {
-	// 		common.Log.Error("%4d: %v", j, jv)
-	// 	}
-
-	// 	panic(fmt.Errorf("Duplicate interval i=%d iv=%v", i, iv))
-	// }
-	// }
 }
 
 // sameIntervals returns true if `intervals0` and `intervals1` are the same.

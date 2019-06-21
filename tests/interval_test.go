@@ -13,7 +13,7 @@ import (
 func TestStartEndInterval(t *testing.T) {
 	randoo = newRando(1, 5)
 	for i := 0; i <= 50; i += 5 {
-		common.Log.Info("TestStartInterval: i=%d", i)
+		common.Log.Debug("TestStartInterval: i=%d", i)
 		for n := 0; n <= i; n += 3 {
 			for k := 1; k <= 10; k++ {
 				testIntervalEnds(t, 0, 1, n)
@@ -44,19 +44,20 @@ func testIntervalEnds(t *testing.T, x0, x1 float64, n int) {
 
 // TestIntervals runs testPoint on some random intervals.
 func TestIntervals(t *testing.T) {
-	common.Log.Info("TestIntervals")
+	common.Log.Debug("TestIntervals")
 	count := 0
-	for m := 1; m <= 51; m += 11 {
+	for m := 1; m <= 51; m += 23 {
 		randoo = newRando(-1, float64(m))
-		for k := m; k <= 51; k += 17 {
+		for k := m; k <= 51; k += 19 {
 			numIntervals := k * m
 			n := 3
 			if numIntervals > 1000 {
 				n = 1
+				numIntervals /= 2
 			} else if numIntervals > 100 {
 				n = 2
 			}
-			common.Log.Info("TestIntervals: k=%d n=%d km=%d", k, n, k*m)
+			common.Log.Debug("TestIntervals: k=%d n=%d km=%d", k, n, k*m)
 
 			points := make([]float64, 0, numIntervals*2+10)
 

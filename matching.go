@@ -12,21 +12,26 @@ import (
 //  `m`: the number of vertices in the second component
 //  `edges`: a list of edges in the bipartite graph represented by pairs of integers
 // Returns: A pair of lists representing the maximum independent set for the graph
-// http://en.wikipedia.org/wiki/Maximum_independent_set
-// http://en.wikipedia.org/wiki/Bipartite_graph
+//   http://en.wikipedia.org/wiki/Maximum_independent_set
+//   http://en.wikipedia.org/wiki/Bipartite_graph
 // A set is independent if and only if its complement is a vertex cover.
 // PROOF: A set V of vertices is an independent set
 //    IFF every edge in the graph is adjacent to at most one member of V
 //    IFF every edge in the graph is adjacent to at least one member not in V
 //    IFF the complement of V is a vertex cover.
 func bipartiteIndependentSet(n, m int, edges [][2]int) ([]int, []int) {
-	coverL, coverR := bipartiteVertexCover(n, m, edges)
-	return complement(coverL, n), complement(coverR, m)
+	coverL, coverR := BipartiteVertexCover(n, m, edges)
+	setL, setR := complement(coverL, n), complement(coverR, m)
+	common.Log.Info("bipartiteIndependentSet: n=%d m=%d edges=%v", n, m, edges)
+	common.Log.Info("   coverL=%d %v -> setL=%d %v", len(coverL), coverL, len(setL), setL)
+	common.Log.Info("   coverR=%d %v -> setR=%d %v", len(coverR), coverR, len(setR), setR)
+
+	return setL, setR
 }
 
-// complement returns [0:`n`) / `list`
+// complement returns [0:`n`) / `list`.
 func complement(list []int, n int) []int {
-	common.Log.Info("complement: n=%d list=%d %v", n, len(list), list)
+	common.Log.Debug("complement: n=%d list=%d %v", n, len(list), list)
 	sort.Ints(list)
 
 	result := make([]int, n-len(list))
@@ -39,75 +44,107 @@ func complement(list []int, n int) []int {
 			b++
 		}
 	}
-	common.Log.Info("complement: result=%d %v", len(result), result)
+	common.Log.Debug("complement: result=%d %v", len(result), result)
 	return result
 }
 
-// bipartiteVertexCover computes a minimum vertex cover of a bipartite graph.
-//  `n`: number of vertices in the left component
-//  `m`: number of vertices in the right component
+// BipartiteVertexCover computes a minimum vertex cover of a bipartite graph.
+//  `n`: number of vertices in the left component.
+//  `m`: number of vertices in the right component.
 //  `edges`: list of edges from the left component connecting to the right component represented
 //      by pairs of integers between 0 and n-1,m-1 respectively
 // Returns: A pair of lists representing the vertices in the left component and the right component
 //   respectively which are in the cover.
 // Internally, this implementation uses the Hopcroft-Karp algorithm and König's theorem to compute
 // the minimal vertex cover of a bipartite graph in O(sqrt(V) * E) time.
-// BipartiteMatching uses Hopscroft-Karp, this function uses König's theorem as in
+// BipartiteMatching uses Hopscroft-Karp, BipartiteVertexCover function uses König's theorem as in
 //    http://tryalgo.org/en/matching/2016/08/05/konig/
 // https://en.wikipedia.org/wiki/Hopcroft%E2%80%93Karp_algorithm
 // https://en.wikipedia.org/wiki/K%C5%91nig%27s_theorem_(graph_theory)
-func bipartiteVertexCover(n, m int, edges [][2]int) ([]int, []int) {
+// A vertex cover in a graph is a set of vertices that includes at least one endpoint of every edge,
+//  and a vertex cover is minimum if no other vertex cover has fewer vertices.
+// A matching in a graph is a set of edges no two of which share an endpoint, and a matching is
+//  maximum if no other matching has more edges.
+func BipartiteVertexCover(n, m int, edges [][2]int) ([]int, []int) {
 	match := BipartiteMatching(n, m, edges)
 
-	// Initialize adjacency lists
-	adjL := make([][]int, n)
-	matchL := make([]int, n)
-	matchCount := make([]int, n)
+	// Initialize adjacency lists.
+	matchCount := make([]int, n) // matchCount[l] = number of matchings containing left vertex `l`.
+
+	matchL := make([]int, n) // matchL[l] = right vertex for  left vertex `l`.
+	adjL := make([][]int, n) // Left vertex adjacency list.
 	coverL := make([]int, n)
 	for i := 0; i < n; i++ {
-		// adjL[i] = nil
 		matchL[i] = -1
-		// matchCount[i] = 0
-		// coverL[i] = 0
 	}
-	adjR := make([][]int, m)
+
 	matchR := make([]int, m)
+	adjR := make([][]int, m)
 	coverR := make([]int, m)
 	for i := 0; i < m; i++ {
-		// adjR[i] = nil
 		matchR[i] = -1
-		// coverR[i] = 0
 	}
 
 	// Unpack matching.
 	for _, m := range match {
-		s, t := m[0], m[1]
-		matchL[s] = t
-		matchR[t] = s
+		l, r := m[0], m[1]
+		matchL[l] = r
+		matchR[r] = l
 	}
 
-	// Loop over edges.
-	for _, e := range edges {
-		s, t := e[0], e[1]
-		if matchL[s] == t {
-			cnt := matchCount[s]
-			matchCount[s]++
+	common.Log.Info("matchL=%d %v", len(matchL), matchL)
+	for i, a := range matchL {
+		common.Log.Info("%6d: %v", i, a)
+	}
+	common.Log.Info("matchR=%d %v", len(matchR), matchR)
+	for i, a := range matchR {
+		common.Log.Info("%6d: %v", i, a)
+	}
+
+	// Loop over edges. Fill adjacency lists with edged not in matching.
+	for i, e := range edges {
+		l, r := e[0], e[1]
+		matched := matchL[l] == r
+		common.Log.Info(" @ i=%d e=%v matched=%t count[%d]=%d", i, e, matched, l, matchCount[l])
+		if matched {
+			cnt := matchCount[l]
+			matchCount[l]++
 			if cnt == 0 {
 				continue
 			}
 		}
-		adjL[s] = append(adjL[s], t)
-		adjR[t] = append(adjR[t], s)
+		adjL[l] = append(adjL[l], r)
+		adjR[r] = append(adjR[r], l)
+		common.Log.Info("          adjL[%d]=%v adjR[%d]=%v", l, adjL[l], r, adjR[r])
 	}
 
-	// Construct cover
-	var left []int
-	var right []int
+	common.Log.Info("matchCount=%d %v", len(matchCount), matchCount)
+	for i, a := range matchCount {
+		common.Log.Info("%6d: %v", i, a)
+	}
+
+	common.Log.Info("adjL=%d %v", len(adjL), adjL)
+	for i, a := range adjL {
+		common.Log.Info("%6d: %v", i, a)
+	}
+	common.Log.Info("adjR=%d %v", len(adjR), adjR)
+	for i, a := range adjR {
+		common.Log.Info("%6d: %v", i, a)
+	}
+	// panic("*")
+
+	// Construct cover.
+	var left, right []int
+
 	for i := 0; i < n; i++ {
-		bpWalk(right, i, adjL, matchL, coverL, matchR, coverR)
+		list := bpWalk(i, adjL, matchL, coverL, matchR, coverR)
+		right = append(right, list...)
+		common.Log.Info("right=%v", right)
 	}
 	for i := 0; i < m; i++ {
-		bpWalk(left, i, adjR, matchR, coverR, matchL, coverL)
+		list := bpWalk(i, adjR, matchR, coverR, matchL, coverL)
+		left = append(left, list...)
+		common.Log.Info("left=%v", left)
 	}
 
 	// Clean up any left over edges
@@ -119,13 +156,24 @@ func bipartiteVertexCover(n, m int, edges [][2]int) ([]int, []int) {
 		}
 	}
 
+	sort.Ints(left)
+	sort.Ints(right)
+
+	common.Log.Info("matchL=%d %v", len(left), left)
+	common.Log.Info("matchR=%d %v", len(right), right)
+
 	return left, right
 }
 
 // bipartite walk
-func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []int) {
+func bpWalk(v int, adjL [][]int, matchL, coverL, matchR, coverR []int) []int {
+	var list []int
+	common.Log.Info("-bpWalk: list=%v v=%d adjL=%v\n"+
+		"\t\tmatchL=%v coverL=%v\n"+
+		"\t\tmatchR=%v coverR=%v",
+		list, v, adjL, matchL, coverL, matchR, coverR)
 	if coverL[v] != 0 || matchL[v] >= 0 {
-		return
+		return nil
 	}
 	for v >= 0 {
 		coverL[v] = 1
@@ -145,6 +193,11 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 		list = append(list, next)
 		v = matchR[next]
 	}
+	common.Log.Info("+bpWalk: list=%v v=%d adjL=%v\n"+
+		"\t\tmatchL=%v coverL=%v\n"+
+		"\t\tmatchR=%v coverR=%v",
+		list, v, adjL, matchL, coverL, matchR, coverR)
+	return list
 }
 
 // BipartiteMatching finds a maximum bipartite matching in an unweighted graph.
@@ -318,6 +371,8 @@ func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
 	if count != matching {
 		panic("Didn't expect this.")
 	}
+	common.Log.Info("BipartiteMatching: n=%d m=%d\n\t   edges=%d %v\n\tmatching=%d %v",
+		n, m, len(edges), edges, len(result), result)
 
 	return result
 }

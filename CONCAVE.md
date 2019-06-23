@@ -51,12 +51,23 @@
     +---|-------+
    e0   v1      e1
 
+[INFO]  rectangular-decomposition.go:81      0: {0 0 1 2}  A
+[INFO]  rectangular-decomposition.go:81      1: {2 0 3 2}  B
+[INFO]  rectangular-decomposition.go:81      2: {1 1 2 2}  C
+
     +-<-+   +---+
-    |   |   |   |                     |
-    |   +---+   |    v={2 1} x 2 --+  |
-    |       :   |                  :  :
-    +-------|---+                --+  +--
-   e0       v1  e1                v1  v1
+    |   |   |   |
+    | A +---+ B |
+    |   : C :   |
+    +---+---+---+
+   e0  v0   v1  e1
+
+    +-<-+   +---+                         +--<
+    |   |   |   |                  v0     |
+    |   +---+v  |    v={2 1}    <--+      |o0
+    |       :   |                  :      :
+    +-------|---+               >--+      +-->
+   e0       o   e1                 o0     o1
 
 [INFO]  rectangular-decomposition.go:82 *** 8 rectangles
 [INFO]  rectangular-decomposition.go:84      0: {2 0 3 2}

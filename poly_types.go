@@ -2,6 +2,7 @@ package clip
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/unidoc/unipdf/v3/common"
 )
@@ -56,7 +57,7 @@ type Vertex struct {
 	prev     *Vertex // Previous vertex in contour (or polygon?) !@#$
 	next     *Vertex // Next vertex in contour (or polygon?) !@#$
 	concave  bool    // True if vertex is concave.
-	visited  bool    // Does this belong here?
+	// visited  bool    // Does this belong here?
 }
 
 func NewVertex(point Point, index int, prev, next *Vertex) *Vertex {
@@ -84,6 +85,10 @@ func (v *Vertex) Validate() {
 	}
 }
 
+func (v Vertex) id() string {
+	return fmt.Sprintf("%v", v.Point)
+}
+
 func (v Vertex) String() string {
 	sp, sn := "(nil)", "(nil)"
 	if v.prev != nil {
@@ -94,8 +99,12 @@ func (v Vertex) String() string {
 	}
 	// return fmt.Sprintf("VERTEX{point:%+g index:%d prev:%p %v next:%p %v concave:%t visited:%t}",
 	// 	v.Point, v.index, v.prev, sp, v.next, sn, v.concave, v.visited)
-	return fmt.Sprintf("VERTEX{index:%d prev:%v point:%g next:%v concave:%5t visited:%5t}",
-		v.index, sp, v.Point, sn, v.concave, v.visited)
+	concave := "convex "
+	if v.concave {
+		concave = "CONCAVE"
+	}
+	return fmt.Sprintf("VERTEX{index:%2d %v->{%g}->%v %s}",
+		v.index, sp, v.Point, sn, concave)
 }
 
 func (v *Vertex) Join(prev, next *Vertex) {
@@ -267,4 +276,94 @@ func getDirection(x0, x1 float64) string {
 		return ">"
 	}
 	return "="
+}
+
+func showContour(contour []*Vertex) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d vertices\n", len(contour))
+	for i, v := range contour[:len(contour)-1] {
+		fmt.Fprintf(&b, "\t%2d %v %p->>%p>->%p\n", i, v, v.prev, v, v.next)
+	}
+	i := len(contour) - 1
+	v := contour[i]
+	fmt.Fprintf(&b, "\t%2d %v %p->{%p}->%p", i, v, v.prev, v, v.next)
+	return b.String()
+}
+
+func validateCountour(contour []*Vertex) {
+	v0 := contour[0]
+	v := v0
+	for i := 0; i < len(contour); i++ {
+		if v.prev == nil || v.next == nil {
+			common.Log.Error("Bad vertex: prev=%p next=%p \n\tv=%v\n\tcontour=%s",
+				v.prev, v.next, v, showContour(contour))
+			panic("bad vertex")
+		}
+		if v.prev.next != v || v.next.prev != v {
+			common.Log.Error("Bad links: prev=%p next=%p \n\tv=%v\n\tcontour=%s",
+				v.prev, v.next, v, showContour(contour))
+			panic("bad links")
+		}
+		v = v.next
+
+	}
+	if v != v0 {
+		common.Log.Error("Not closed: prev=%p next=%p \n\tv=%v\n\tcontour=%s",
+			v.prev, v.next, v, showContour(contour))
+		panic("not closed")
+	}
+}
+
+func rebuildCountour(contour []*Vertex) []*Vertex {
+	validateCountour(contour)
+	newContour := make([]*Vertex, 0, len(contour))
+
+	v := contour[0]
+	prev := v.prev
+	for i := 0; i < len(contour); i++ {
+		next := v.next
+		common.Log.Info("^^ i=%d index=%4d %v {%v} %v X=%5t Y=%5t",
+			i, v.index, prev.Point, v.Point, next.Point,
+			prev.X == v.X && v.X == next.X,
+			prev.Y == v.Y && v.Y == next.Y)
+		if !(prev.X == v.X && v.X == next.X) && !(prev.Y == v.Y && v.Y == next.Y) {
+			newContour = append(newContour, cv(v))
+			prev = v
+		} else {
+			common.Log.Info("$$ skip %v", v)
+		}
+		v = next
+	}
+	for i := 0; i < len(newContour); i++ {
+		newContour[i].index = i
+	}
+	for i0 := 0; i0 < len(newContour); i0++ {
+		i1 := (i0 + 1) % len(newContour)
+		newContour[i0].next = newContour[i1]
+		newContour[i1].prev = newContour[i0]
+	}
+
+	common.Log.Info("rebuildContour: %d vertices -> %d vertices", len(contour), len(newContour))
+	// if v != contour[0] {
+	// 	panic(">>not closed<<")
+	// }
+
+	common.Log.Info("counter=%s", showContour(contour))
+	common.Log.Info("newContour=%s", showContour(newContour))
+	validateCountour(newContour)
+	if len(newContour) != 4 {
+		panic("!=4 vertices")
+	}
+
+	return newContour
+}
+
+// cv returns a pointer to a copy of `v`.
+func cv(v *Vertex) *Vertex {
+	if v == nil {
+		panic("nil pointer")
+		return nil
+	}
+	w := *v
+	return &w
 }

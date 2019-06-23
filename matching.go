@@ -167,9 +167,9 @@ func bpWalk(list []int, v int, adjL [][]int, matchL, coverL, matchR, coverR []in
 //    One can prove that a matching is maximum if and only if it does not have any augmenting path.
 //      (This result is sometimes called Berge's lemma.)
 func BipartiteMatching(n, m int, edges [][2]int) [][2]int {
-	common.Log.Info("BipartiteMatching: n=%d m=%d\nedges=%d %v", n, m, len(edges), edges)
+	common.Log.Debug("BipartiteMatching: n=%d m=%d\nedges=%d %v", n, m, len(edges), edges)
 	for i, e := range edges {
-		common.Log.Info("%6d: %v", i, e)
+		common.Log.Debug("%6d: %v", i, e)
 	}
 	if len(edges) == 0 {
 		// panic("no edges")
